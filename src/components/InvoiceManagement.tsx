@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ServiceInvoice, Customer, InvoiceItem, ServiceDetails } from '../types';
 import { customerService } from '../services/borewellService';
+import EnhancedInvoiceForm from './EnhancedInvoiceForm';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -24,6 +25,7 @@ const InvoiceManagement: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showEnhancedForm, setShowEnhancedForm] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<ServiceInvoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<ServiceInvoice | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -31,6 +33,11 @@ const InvoiceManagement: React.FC = () => {
   const [editPVC7, setEditPVC7] = useState<number>(0);
   const [editPVC10, setEditPVC10] = useState<number>(0);
   const [editBata, setEditBata] = useState<number>(2000);
+  const [editSlabRateType, setEditSlabRateType] = useState<string>('1');
+  const [editStartingRate, setEditStartingRate] = useState<number>(75);
+  const [editPVC7Rate, setEditPVC7Rate] = useState<number>(400);
+  const [editPVC10Rate, setEditPVC10Rate] = useState<number>(700);
+  const [editCalculatedRates, setEditCalculatedRates] = useState<any>(null);
 
   const openEdit = (invoice: ServiceInvoice) => {
     setEditingInvoice(invoice);
@@ -52,6 +59,125 @@ const InvoiceManagement: React.FC = () => {
     setEditBata((bataItem?.rate as number) || (bataItem?.amount as number) || 2000);
     setShowEditModal(true);
   };
+
+  // Auto-calculation functions for quick edit
+  const generateDefaultRatesForEdit = (startRate: number, type: 'type1' | 'type2' | 'type3') => {
+    const rates: { [key: string]: number } = {};
+    
+    if (type === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments
+      const type2Ranges = [
+        'rate1_100', 'rate101_200', 'rate201_300', 'rate301_400', 'rate401_500',
+        'rate501_600', 'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000',
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      const type2Increments = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
+      
+      type2Ranges.forEach((key, index) => {
+        rates[key] = startRate + type2Increments[index];
+      });
+    } else {
+      // Pattern for type1 and type3: 1-300ft calc +0, 301-400ft calc +5, 401-500ft calc +10, etc.
+      const increments = [0, 5, 10, 20, 30, 40, 50, 60];
+      
+      const rateKeys = [
+        'rate1_300', 'rate301_400', 'rate401_500', 'rate501_600',
+        'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000'
+      ];
+      
+      rateKeys.forEach((key, index) => {
+        rates[key] = startRate + increments[index];
+      });
+      
+      const baseFor1001Plus = startRate + 60;
+      const additionalRanges = [
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      additionalRanges.forEach((key, index) => {
+        rates[key] = baseFor1001Plus + ((index + 1) * 100);
+      });
+      
+      if (type === 'type3') {
+        rates['rate1_500'] = startRate;
+      }
+    }
+    
+    return rates;
+  };
+
+  const calculateSlabRateByRangesForEdit = (depth: number, rates: any, slabType: string) => {
+    let totalCost = 0;
+    let remainingDepth = depth;
+    
+    const ranges = [
+      { key: 'rate1_300', from: 0, to: 300 },
+      { key: 'rate301_400', from: 301, to: 400 },
+      { key: 'rate401_500', from: 401, to: 500 },
+      { key: 'rate501_600', from: 501, to: 600 },
+      { key: 'rate601_700', from: 601, to: 700 },
+      { key: 'rate701_800', from: 701, to: 800 },
+      { key: 'rate801_900', from: 801, to: 900 },
+      { key: 'rate901_1000', from: 901, to: 1000 },
+      { key: 'rate1001_1100', from: 1001, to: 1100 },
+      { key: 'rate1101_1200', from: 1101, to: 1200 },
+      { key: 'rate1201_1300', from: 1201, to: 1300 },
+      { key: 'rate1301_1400', from: 1301, to: 1400 },
+      { key: 'rate1401_1500', from: 1401, to: 1500 },
+      { key: 'rate1501_1600', from: 1501, to: 1600 },
+      { key: 'rate1600_plus', from: 1601, to: 9999 }
+    ];
+
+    // For type2, use different ranges
+    if (slabType === '2') {
+      const type2Ranges = [
+        { key: 'rate1_100', from: 1, to: 100 },
+        { key: 'rate101_200', from: 101, to: 200 },
+        { key: 'rate201_300', from: 201, to: 300 },
+        { key: 'rate301_400', from: 301, to: 400 },
+        { key: 'rate401_500', from: 401, to: 500 },
+        { key: 'rate501_600', from: 501, to: 600 },
+        { key: 'rate601_700', from: 601, to: 700 },
+        { key: 'rate701_800', from: 701, to: 800 },
+        { key: 'rate801_900', from: 801, to: 900 },
+        { key: 'rate901_1000', from: 901, to: 1000 },
+        { key: 'rate1001_1100', from: 1001, to: 1100 },
+        { key: 'rate1101_1200', from: 1101, to: 1200 },
+        { key: 'rate1201_1300', from: 1201, to: 1300 },
+        { key: 'rate1301_1400', from: 1301, to: 1400 },
+        { key: 'rate1401_1500', from: 1401, to: 1500 },
+        { key: 'rate1501_1600', from: 1501, to: 1600 },
+        { key: 'rate1600_plus', from: 1601, to: 9999 }
+      ];
+      
+      for (const range of type2Ranges) {
+        if (remainingDepth <= 0) break;
+        
+        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
+        if (applicableDepth > 0) {
+          totalCost += applicableDepth * (rates[range.key] || 0);
+          remainingDepth -= applicableDepth;
+        }
+      }
+    } else {
+      for (const range of ranges) {
+        if (remainingDepth <= 0) break;
+        
+        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
+        if (applicableDepth > 0) {
+          totalCost += applicableDepth * (rates[range.key] || 0);
+          remainingDepth -= applicableDepth;
+        }
+      }
+    }
+    
+    return totalCost;
+  };
+
+
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -146,13 +272,14 @@ const InvoiceManagement: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showModal) setShowModal(false);
+        if (showEnhancedForm) setShowEnhancedForm(false);
         if (viewingInvoice) setViewingInvoice(null);
         if (showEditModal) setShowEditModal(false);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showModal, viewingInvoice, showEditModal]);
+  }, [showModal, showEnhancedForm, viewingInvoice, showEditModal]);
 
   const loadSlabRateConfig = () => {
     try {
@@ -227,6 +354,36 @@ const InvoiceManagement: React.FC = () => {
     }
   };
 
+  const calculateEditRates = useCallback(() => {
+    if (!slabRateConfig || editDepth <= 0) return;
+
+    const typeKey = `type${editSlabRateType}` as keyof typeof slabRateConfig;
+    const rates = generateDefaultRatesForEdit(editStartingRate, typeKey);
+    
+    const slabCost = calculateSlabRateByRangesForEdit(editDepth, rates, editSlabRateType);
+    const pvc7Cost = editPVC7 * editPVC7Rate;
+    const pvc10Cost = editPVC10 * editPVC10Rate;
+    const subtotal = slabCost + pvc7Cost + pvc10Cost + editBata;
+    const taxAmount = 0; // No tax in quick edit for simplicity
+    const total = subtotal + taxAmount;
+
+    setEditCalculatedRates({
+      slabCost,
+      pvc7Cost,
+      pvc10Cost,
+      bata: editBata,
+      subtotal,
+      taxAmount,
+      total,
+      rates
+    });
+  }, [slabRateConfig, editDepth, editSlabRateType, editStartingRate, editPVC7, editPVC10, editPVC7Rate, editPVC10Rate, editBata]);
+
+  // Auto-calculate when values change
+  useEffect(() => {
+    calculateEditRates();
+  }, [calculateEditRates]);
+
   useEffect(() => {
     const filtered = invoices.filter(invoice =>
       invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -255,6 +412,103 @@ const InvoiceManagement: React.FC = () => {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnhancedFormSubmit = (invoiceData: any) => {
+    try {
+      // Create invoice items from the calculated rates
+      const items: InvoiceItem[] = [];
+      
+      // Add drilling service item
+      if (invoiceData.calculatedRates.slabCost > 0) {
+        items.push({
+          id: `item_${Date.now()}_1`,
+          type: 'service',
+          description: `${invoiceData.serviceType} - ${invoiceData.totalDepth} feet (Slab Type ${invoiceData.slabRateType})`,
+          quantity: invoiceData.totalDepth,
+          unit: 'feet',
+          rate: invoiceData.calculatedRates.slabCost / invoiceData.totalDepth,
+          amount: invoiceData.calculatedRates.slabCost
+        });
+      }
+      
+      // Add PVC items
+      if (invoiceData.pvc7Inch > 0) {
+        items.push({
+          id: `item_${Date.now()}_2`,
+          type: 'material',
+          description: `7" PVC Casing`,
+          quantity: invoiceData.pvc7Inch,
+          unit: 'feet',
+          rate: invoiceData.pvc7InchRate,
+          amount: invoiceData.calculatedRates.pvc7Cost
+        });
+      }
+      
+      if (invoiceData.pvc10Inch > 0) {
+        items.push({
+          id: `item_${Date.now()}_3`,
+          type: 'material',
+          description: `10" PVC Casing`,
+          quantity: invoiceData.pvc10Inch,
+          unit: 'feet',
+          rate: invoiceData.pvc10InchRate,
+          amount: invoiceData.calculatedRates.pvc10Cost
+        });
+      }
+      
+      // Add Bata
+      if (invoiceData.bata > 0) {
+        items.push({
+          id: `item_${Date.now()}_4`,
+          type: 'service',
+          description: 'Bata',
+          quantity: 1,
+          unit: 'service',
+          rate: invoiceData.bata,
+          amount: invoiceData.bata
+        });
+      }
+      
+      // Create the complete invoice
+      const newInvoice: ServiceInvoice = {
+        id: `inv_${Date.now()}`,
+        invoiceNumber: invoiceData.invoiceNumber,
+        customer: invoiceData.customer,
+        serviceDetails: {
+          id: `service_${Date.now()}`,
+          serviceType: invoiceData.serviceType,
+          location: invoiceData.location,
+          serviceDate: new Date(invoiceData.serviceDate),
+          description: invoiceData.description || `${invoiceData.serviceType} service at ${invoiceData.location}`
+        },
+        items: items,
+        subtotal: invoiceData.calculatedRates.subtotal,
+        taxAmount: invoiceData.calculatedRates.taxAmount,
+        taxRate: invoiceData.taxRate || 0,
+        totalAmount: invoiceData.calculatedRates.total,
+        paidAmount: invoiceData.advanceAmount,
+        pendingAmount: invoiceData.calculatedRates.total - invoiceData.advanceAmount,
+        status: 'DRAFT',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        invoiceDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        notes: invoiceData.notes,
+        terms: invoiceData.terms
+      };
+      
+      // Save to localStorage
+      const updatedInvoices = [...invoices, newInvoice];
+      localStorage.setItem('anjaneya_invoices', JSON.stringify(updatedInvoices));
+      setInvoices(updatedInvoices);
+      setFilteredInvoices(updatedInvoices);
+      
+      setShowEnhancedForm(false);
+      toast.success('Invoice created successfully!');
+    } catch (error) {
+      toast.error('Failed to create invoice');
     }
   };
 
@@ -1069,7 +1323,7 @@ const InvoiceManagement: React.FC = () => {
             Slab Rate Config
           </button>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => setShowEnhancedForm(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <PlusIcon className="h-4 w-4 mr-2" />
@@ -1107,7 +1361,7 @@ const InvoiceManagement: React.FC = () => {
           {!searchTerm && (
             <div className="mt-6">
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => setShowEnhancedForm(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
@@ -1989,24 +2243,87 @@ const InvoiceManagement: React.FC = () => {
                   e.preventDefault();
                   // persist update + recalc from edited depth/PVC
                   if (!editingInvoice) return;
-                  // rebuild items from edited inputs
+                  // rebuild items from edited inputs using calculated rates
                   const newItems: InvoiceItem[] = [];
-                  // Depth broken into simple rows
-                  if (editDepth > 0) {
-                    newItems.push({ id: `drill_${Date.now()}`, description: 'Drilling', quantity: editDepth, unit: 'feet', rate: slabRateConfig.type1.rate1_300, amount: editDepth * slabRateConfig.type1.rate1_300, type: 'service' });
+                  
+                  let newSubtotal = 0;
+                  let newTax = 0;
+                  let newTotal = 0;
+
+                  // Use calculated rates if available, otherwise fallback to simple calculation
+                  if (editCalculatedRates) {
+                    // Add drilling service item with calculated slab cost
+                    if (editCalculatedRates.slabCost > 0) {
+                      newItems.push({ 
+                        id: `drill_${Date.now()}`, 
+                        description: `Drilling - ${editDepth} feet (Slab Type ${editSlabRateType})`, 
+                        quantity: editDepth, 
+                        unit: 'feet', 
+                        rate: editCalculatedRates.slabCost / editDepth, 
+                        amount: editCalculatedRates.slabCost, 
+                        type: 'service' 
+                      });
+                    }
+                    
+                    // Add PVC items with calculated costs
+                    if (editCalculatedRates.pvc7Cost > 0) {
+                      newItems.push({ 
+                        id: `pvc7_${Date.now()}`, 
+                        description: '7" PVC Casing', 
+                        quantity: editPVC7, 
+                        unit: 'feet', 
+                        rate: editPVC7Rate, 
+                        amount: editCalculatedRates.pvc7Cost, 
+                        type: 'material' 
+                      });
+                    }
+                    
+                    if (editCalculatedRates.pvc10Cost > 0) {
+                      newItems.push({ 
+                        id: `pvc10_${Date.now()}`, 
+                        description: '10" PVC Casing', 
+                        quantity: editPVC10, 
+                        unit: 'feet', 
+                        rate: editPVC10Rate, 
+                        amount: editCalculatedRates.pvc10Cost, 
+                        type: 'material' 
+                      });
+                    }
+                    
+                    // Add Bata
+                    if (editCalculatedRates.bata > 0) {
+                      newItems.push({ 
+                        id: `bata_${Date.now()}`, 
+                        description: 'Bata', 
+                        quantity: 1, 
+                        unit: 'service', 
+                        rate: editBata, 
+                        amount: editCalculatedRates.bata, 
+                        type: 'service' 
+                      });
+                    }
+                    
+                    newSubtotal = editCalculatedRates.subtotal;
+                    newTax = editCalculatedRates.taxAmount;
+                    newTotal = editCalculatedRates.total;
+                  } else {
+                    // Fallback to simple calculation
+                    if (editDepth > 0) {
+                      newItems.push({ id: `drill_${Date.now()}`, description: 'Drilling', quantity: editDepth, unit: 'feet', rate: slabRateConfig.type1.rate1_300, amount: editDepth * slabRateConfig.type1.rate1_300, type: 'service' });
+                    }
+                    if (editPVC7 > 0) {
+                      newItems.push({ id: `pvc7_${Date.now()}`, description: '7" PVC', quantity: editPVC7, unit: 'feet', rate: editPVC7Rate, amount: editPVC7 * editPVC7Rate, type: 'material' });
+                    }
+                    if (editPVC10 > 0) {
+                      newItems.push({ id: `pvc10_${Date.now()}`, description: '10" PVC', quantity: editPVC10, unit: 'feet', rate: editPVC10Rate, amount: editPVC10 * editPVC10Rate, type: 'material' });
+                    }
+                    if (editBata > 0) {
+                      newItems.push({ id: `bata_${Date.now()}`, description: 'BATA', quantity: 1, unit: 'Per Bore', rate: editBata, amount: editBata, type: 'additional' });
+                    }
+                    newSubtotal = newItems.reduce((s, it) => s + (it.amount || 0), 0);
+                    newTax = 0;
+                    newTotal = newSubtotal + newTax;
                   }
-                  if (editPVC7 > 0) {
-                    newItems.push({ id: `pvc7_${Date.now()}`, description: '7" PVC', quantity: editPVC7, unit: 'feet', rate: 400, amount: editPVC7 * 400, type: 'material' });
-                  }
-                  if (editPVC10 > 0) {
-                    newItems.push({ id: `pvc10_${Date.now()}`, description: '10" PVC', quantity: editPVC10, unit: 'feet', rate: 700, amount: editPVC10 * 700, type: 'material' });
-                  }
-                  if (editBata > 0) {
-                    newItems.push({ id: `bata_${Date.now()}`, description: 'BATA', quantity: 1, unit: 'Per Bore', rate: editBata, amount: editBata, type: 'additional' });
-                  }
-                  const newSubtotal = newItems.reduce((s, it) => s + (it.amount || 0), 0);
-                  const newTax = formData.enableTax ? newSubtotal * (formData.taxRate / 100) : 0;
-                  const newTotal = newSubtotal + newTax;
                   const updatedInvoices = invoices.map((i) =>
                     i.id === editingInvoice.id ? applyEditsToInvoice(i, { ...editingInvoice, items: newItems, subtotal: newSubtotal, taxAmount: newTax, totalAmount: newTotal, pendingAmount: Math.max(newTotal - (editingInvoice.paidAmount || 0), 0) }) : i
                   );
@@ -2017,7 +2334,84 @@ const InvoiceManagement: React.FC = () => {
                 }}
               >
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Edit Invoice</h3>
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Edit Invoice</h3>
+                  
+                  {/* Auto-Calculation Section */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 className="text-md font-medium text-blue-900 mb-3">Auto-Calculation Settings</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Slab Rate Type
+                        </label>
+                        <select
+                          value={editSlabRateType}
+                          onChange={(e) => setEditSlabRateType(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="1">Type 1: Standard (1-300, 301-400...)</option>
+                          <option value="2">Type 2: Enhanced (1-100, 101-200...)</option>
+                          <option value="3">Type 3: Manual Configuration</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Starting Rate (₹/ft)
+                        </label>
+                        <input
+                          type="number"
+                          value={editStartingRate}
+                          onChange={(e) => setEditStartingRate(parseFloat(e.target.value) || 75)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="75"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Total Depth (feet)
+                        </label>
+                        <input
+                          type="number"
+                          value={editDepth}
+                          onChange={(e) => setEditDepth(parseFloat(e.target.value) || 0)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter depth"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calculation Results */}
+                  {editCalculatedRates && (
+                    <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                      <h4 className="text-md font-medium text-green-900 mb-3">Calculation Results</h4>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Slab Cost:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.slabCost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">7" PVC:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.pvc7Cost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">10" PVC:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.pvc10Cost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Bata:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.bata.toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-green-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-medium text-green-900">Total Amount:</span>
+                          <span className="text-2xl font-bold text-green-900">₹{editCalculatedRates.total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -2031,33 +2425,6 @@ const InvoiceManagement: React.FC = () => {
                         <option value="OVERDUE">OVERDUE</option>
                         <option value="CANCELLED">CANCELLED</option>
                       </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Total Depth (feet)</label>
-                      <input
-                        type="number"
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        value={formData.totalDepth}
-                        onChange={(e) => setFormData({ ...formData, totalDepth: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">7" PVC (feet)</label>
-                      <input
-                        type="number"
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        value={formData.pvc7Inch}
-                        onChange={(e) => setFormData({ ...formData, pvc7Inch: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">10" PVC (feet)</label>
-                      <input
-                        type="number"
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        value={formData.pvc10Inch}
-                        onChange={(e) => setFormData({ ...formData, pvc10Inch: parseFloat(e.target.value) || 0 })}
-                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
@@ -2087,15 +2454,6 @@ const InvoiceManagement: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Total Depth (feet)</label>
-                      <input
-                        type="number"
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        value={editDepth}
-                        onChange={(e) => setEditDepth(parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-gray-700">7" PVC (feet)</label>
                       <input
                         type="number"
@@ -2105,12 +2463,30 @@ const InvoiceManagement: React.FC = () => {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700">7" PVC Rate (₹/ft)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC7Rate}
+                        onChange={(e) => setEditPVC7Rate(parseFloat(e.target.value) || 400)}
+                      />
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700">10" PVC (feet)</label>
                       <input
                         type="number"
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         value={editPVC10}
                         onChange={(e) => setEditPVC10(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">10" PVC Rate (₹/ft)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC10Rate}
+                        onChange={(e) => setEditPVC10Rate(parseFloat(e.target.value) || 700)}
                       />
                     </div>
                     <div>
@@ -2150,6 +2526,14 @@ const InvoiceManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Enhanced Invoice Form */}
+      {showEnhancedForm && (
+        <EnhancedInvoiceForm
+          onClose={() => setShowEnhancedForm(false)}
+          onSave={handleEnhancedFormSubmit}
+        />
       )}
     </div>
   );

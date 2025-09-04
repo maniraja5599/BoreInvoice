@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeftIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -22,7 +22,12 @@ interface SlabRateConfig {
     rate1600_plus: number;
   };
   type2: {
-    rate1_500: number;
+    // Enhanced Slab #2 with 100-foot increments from 1-100 to 1501-1600
+    rate1_100: number;
+    rate101_200: number;
+    rate201_300: number;
+    rate301_400: number;
+    rate401_500: number;
     rate501_600: number;
     rate601_700: number;
     rate701_800: number;
@@ -68,49 +73,75 @@ const SlabRateConfiguration: React.FC = () => {
 
   
   // Generate default rates using the new rate structure
-  const generateDefaultRates = (startRate: number = 90) => {
+  const generateDefaultRates = (startRate: number = 75, type: 'type1' | 'type2' | 'type3' = 'type1') => {
     const rates: { [key: string]: number } = {};
     
-    // Define the increment pattern: 90, 100, 120, 150, 190, 240, 300, 370, then +100 each
-    const increments = [0, 10, 30, 60, 100, 150, 210, 280]; // For rates 1-8
-    
-    // First 8 ranges with specific increments
-    const rateKeys = [
-      'rate1_300', 'rate301_400', 'rate401_500', 'rate501_600',
-      'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000'
-    ];
-    
-    rateKeys.forEach((key, index) => {
-      rates[key] = startRate + increments[index];
-    });
-    
-    // For ranges 1001+ (9th range onwards), increment by 100 each time
-    const baseFor1001Plus = startRate + 280; // This gives us the 901-1000 rate (370 if startRate=90)
-    const additionalRanges = [
-      'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
-      'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
-    ];
-    
-    additionalRanges.forEach((key, index) => {
-      rates[key] = baseFor1001Plus + ((index + 1) * 100); // +100, +200, +300, +400...
-    });
+    if (type === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments: 1-100, 101-200, 201-300... up to 1600+
+      const type2Ranges = [
+        'rate1_100', 'rate101_200', 'rate201_300', 'rate301_400', 'rate401_500',
+        'rate501_600', 'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000',
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      // Progressive increment pattern for type2: 1-100ft calc +0, 101-200ft calc +5, 201-300ft calc +10, etc.
+      const type2Increments = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
+      
+      type2Ranges.forEach((key, index) => {
+        rates[key] = startRate + type2Increments[index];
+      });
+    } else {
+      // Pattern for type1 and type3: 1-300ft calc +0, 301-400ft calc +5, 401-500ft calc +10, etc.
+      const increments = [0, 5, 10, 20, 30, 40, 50, 60]; // For rates 1-8
+      
+      // First 8 ranges with specific increments
+      const rateKeys = [
+        'rate1_300', 'rate301_400', 'rate401_500', 'rate501_600',
+        'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000'
+      ];
+      
+      rateKeys.forEach((key, index) => {
+        rates[key] = startRate + increments[index];
+      });
+      
+      // For ranges 1001+ (9th range onwards), increment by 100 each time
+      const baseFor1001Plus = startRate + 60; // This gives us the 901-1000 rate
+      const additionalRanges = [
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      additionalRanges.forEach((key, index) => {
+        rates[key] = baseFor1001Plus + ((index + 1) * 100); // +100, +200, +300, +400...
+      });
+      
+      // Add rate1_500 for type3
+      if (type === 'type3') {
+        rates['rate1_500'] = startRate;
+      }
+    }
     
     return rates;
   };
 
   const [slabRateConfig, setSlabRateConfig] = useState<SlabRateConfig>({
     type1: {
-      ...generateDefaultRates(90),
-      rate1_500: 90 // This will be overridden for type1
+      ...generateDefaultRates(75, 'type1')
     } as any,
     type2: {
-      ...generateDefaultRates(90),
-      rate1_500: 90
+      ...generateDefaultRates(75, 'type2')
     } as any,
     type3: {
-      ...generateDefaultRates(90),
-      rate1_500: 90
+      ...generateDefaultRates(75, 'type3')
     } as any
+  });
+
+  // State to manage calc values for each slab type
+  const [calcValues, setCalcValues] = useState<{[key: string]: {[key: string]: string}}>({
+    type1: {},
+    type2: {},
+    type3: {}
   });
 
   useEffect(() => {
@@ -148,10 +179,7 @@ const SlabRateConfiguration: React.FC = () => {
   };
 
   const resetSlabToDefaults = (slabType: 'type1' | 'type2' | 'type3') => {
-    const defaultRates = {
-      ...generateDefaultRates(90),
-      rate1_500: 90
-    } as any;
+    const defaultRates = generateDefaultRates(75, slabType) as any;
 
     setSlabRateConfig({
       ...slabRateConfig,
@@ -163,24 +191,55 @@ const SlabRateConfiguration: React.FC = () => {
 
   // Helper function to render rate input fields
   const renderRateInputs = (type: 'type1' | 'type2' | 'type3', excludeFields: string[] = []) => {
-    const rateFields = [
-      { key: 'rate1_300', label: '1-300 feet (₹/ft)', startRate: 90 },
-      { key: 'rate301_400', label: '301-400 feet (₹/ft)', startRate: 100 },
-      { key: 'rate401_500', label: '401-500 feet (₹/ft)', startRate: 120 },
-      { key: 'rate1_500', label: '1-500 feet (₹/ft)', startRate: 90 },
-      { key: 'rate501_600', label: '501-600 feet (₹/ft)', startRate: 150 },
-      { key: 'rate601_700', label: '601-700 feet (₹/ft)', startRate: 190 },
-      { key: 'rate701_800', label: '701-800 feet (₹/ft)', startRate: 240 },
-      { key: 'rate801_900', label: '801-900 feet (₹/ft)', startRate: 300 },
-      { key: 'rate901_1000', label: '901-1000 feet (₹/ft)', startRate: 370 },
-      { key: 'rate1001_1100', label: '1001-1100 feet (₹/ft)', startRate: 470 },
-      { key: 'rate1101_1200', label: '1101-1200 feet (₹/ft)', startRate: 570 },
-      { key: 'rate1201_1300', label: '1201-1300 feet (₹/ft)', startRate: 670 },
-      { key: 'rate1301_1400', label: '1301-1400 feet (₹/ft)', startRate: 770 },
-      { key: 'rate1401_1500', label: '1401-1500 feet (₹/ft)', startRate: 870 },
-      { key: 'rate1501_1600', label: '1501-1600 feet (₹/ft)', startRate: 970 },
-      { key: 'rate1600_plus', label: '1600+ feet (₹/ft)', startRate: 1070 }
-    ];
+    // Define rate fields based on slab type
+    let rateFields: { key: string; label: string; startRate: number; calc: string }[] = [];
+    
+    if (type === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments
+      rateFields = [
+        { key: 'rate1_100', label: '1-100 feet (₹/ft)', startRate: 75, calc: '+0' },
+        { key: 'rate101_200', label: '101-200 feet (₹/ft)', startRate: 80, calc: '+5' },
+        { key: 'rate201_300', label: '201-300 feet (₹/ft)', startRate: 85, calc: '+10' },
+        { key: 'rate301_400', label: '301-400 feet (₹/ft)', startRate: 90, calc: '+15' },
+        { key: 'rate401_500', label: '401-500 feet (₹/ft)', startRate: 95, calc: '+20' },
+        { key: 'rate501_600', label: '501-600 feet (₹/ft)', startRate: 100, calc: '+25' },
+        { key: 'rate601_700', label: '601-700 feet (₹/ft)', startRate: 105, calc: '+30' },
+        { key: 'rate701_800', label: '701-800 feet (₹/ft)', startRate: 110, calc: '+35' },
+        { key: 'rate801_900', label: '801-900 feet (₹/ft)', startRate: 115, calc: '+40' },
+        { key: 'rate901_1000', label: '901-1000 feet (₹/ft)', startRate: 120, calc: '+45' },
+        { key: 'rate1001_1100', label: '1001-1100 feet (₹/ft)', startRate: 125, calc: '+50' },
+        { key: 'rate1101_1200', label: '1101-1200 feet (₹/ft)', startRate: 130, calc: '+55' },
+        { key: 'rate1201_1300', label: '1201-1300 feet (₹/ft)', startRate: 135, calc: '+60' },
+        { key: 'rate1301_1400', label: '1301-1400 feet (₹/ft)', startRate: 140, calc: '+65' },
+        { key: 'rate1401_1500', label: '1401-1500 feet (₹/ft)', startRate: 145, calc: '+70' },
+        { key: 'rate1501_1600', label: '1501-1600 feet (₹/ft)', startRate: 150, calc: '+75' },
+        { key: 'rate1600_plus', label: '1600+ feet (₹/ft)', startRate: 155, calc: '+80' }
+      ];
+    } else {
+      // Original structure for type1 and type3
+      rateFields = [
+        { key: 'rate1_300', label: '1-300 feet (₹/ft)', startRate: 75, calc: '+0' },
+        { key: 'rate301_400', label: '301-400 feet (₹/ft)', startRate: 80, calc: '+5' },
+        { key: 'rate401_500', label: '401-500 feet (₹/ft)', startRate: 85, calc: '+10' },
+        { key: 'rate501_600', label: '501-600 feet (₹/ft)', startRate: 95, calc: '+20' },
+        { key: 'rate601_700', label: '601-700 feet (₹/ft)', startRate: 105, calc: '+30' },
+        { key: 'rate701_800', label: '701-800 feet (₹/ft)', startRate: 115, calc: '+40' },
+        { key: 'rate801_900', label: '801-900 feet (₹/ft)', startRate: 125, calc: '+50' },
+        { key: 'rate901_1000', label: '901-1000 feet (₹/ft)', startRate: 135, calc: '+60' },
+        { key: 'rate1001_1100', label: '1001-1100 feet (₹/ft)', startRate: 235, calc: '+100' },
+        { key: 'rate1101_1200', label: '1101-1200 feet (₹/ft)', startRate: 335, calc: '+100' },
+        { key: 'rate1201_1300', label: '1201-1300 feet (₹/ft)', startRate: 435, calc: '+100' },
+        { key: 'rate1301_1400', label: '1301-1400 feet (₹/ft)', startRate: 535, calc: '+100' },
+        { key: 'rate1401_1500', label: '1401-1500 feet (₹/ft)', startRate: 635, calc: '+100' },
+        { key: 'rate1501_1600', label: '1501-1600 feet (₹/ft)', startRate: 735, calc: '+100' },
+        { key: 'rate1600_plus', label: '1600+ feet (₹/ft)', startRate: 835, calc: '+100' }
+      ];
+      
+      // Add rate1_500 for type3
+      if (type === 'type3') {
+        rateFields.push({ key: 'rate1_500', label: '1-500 feet (₹/ft)', startRate: 75, calc: '+0' });
+      }
+    }
 
     // Auto-fill function based on first slab rate
     const handleAutoFill = () => {
@@ -189,52 +248,29 @@ const SlabRateConfiguration: React.FC = () => {
       
       // Get the base rate depending on slab type
       if (type === 'type2') {
-        baseRate = slabRateConfig[type].rate1_500 || 90;
+        baseRate = slabRateConfig[type].rate1_100 || 75;
+      } else if (type === 'type3') {
+        baseRate = slabRateConfig[type].rate1_300 || 75;
       } else {
-        baseRate = slabRateConfig[type].rate1_300 || 90;
+        baseRate = slabRateConfig[type].rate1_300 || 75;
       }
       
-      // Define the increment pattern based on your specification
-      const increments = [0, 10, 30, 60, 100, 150, 210, 280]; // For rates 1-8 (90, 100, 120, 150, 190, 240, 300, 370)
-      
-      if (type === 'type2') {
-        // For type2, start with rate1_500, then continue with the pattern from rate501_600
-        newRates.rate1_500 = baseRate;
+      // Generate new rates using manual calc values if available
+      rateFields.forEach(field => {
+        const calcValue = calcValues[type]?.[field.key] || field.calc;
+        const increment = parseInt(calcValue.replace(/[+-]/g, '')) || 0;
+        const isNegative = calcValue.startsWith('-');
+        const finalIncrement = isNegative ? -increment : increment;
         
-        // Apply increments starting from rate501_600 (which would be index 3 in the pattern)
-        const type2Fields = rateFields.filter(field => field.key !== 'rate1_300' && field.key !== 'rate301_400' && field.key !== 'rate401_500');
-        type2Fields.forEach((field, index) => {
-          const adjustedIndex = index + 3; // Start from increment index 3 (rate501_600)
-          if (adjustedIndex < 8) {
-            newRates[field.key] = baseRate + increments[adjustedIndex];
-          } else {
-            // For ranges 1001+ increment by 100 each time
-            const baseFor1001Plus = baseRate + 280;
-            const additionalIncrement = (adjustedIndex - 7) * 100;
-            newRates[field.key] = baseFor1001Plus + additionalIncrement;
-          }
-        });
-      } else {
-        // For type1 and type3, use the full pattern starting from rate1_300
-        rateFields.forEach((field, index) => {
-          if (index < 8) {
-            // For the first 8 ranges, use the specific increment pattern
-            newRates[field.key] = baseRate + increments[index];
-          } else {
-            // For ranges 1001+ increment by 100 each time
-            const baseFor1001Plus = baseRate + 280;
-            const additionalIncrement = (index - 7) * 100;
-            newRates[field.key] = baseFor1001Plus + additionalIncrement;
-          }
-        });
-      }
+        newRates[field.key] = baseRate + finalIncrement;
+      });
       
       setSlabRateConfig({
         ...slabRateConfig,
         [type]: newRates
       });
       
-      toast.success(`Auto-filled ${slabNames[type]} rates based on ₹${baseRate}!`);
+      toast.success(`Auto-filled ${slabNames[type]} rates based on ₹${baseRate} and manual calc values!`);
     };
 
 
@@ -255,36 +291,85 @@ const SlabRateConfiguration: React.FC = () => {
         </div>
         <p className="text-xs text-gray-500 mb-4 text-center">
           {type === 'type2' ? 
-            'Enter rate for 1-500 feet, then click Auto Fill to calculate all other rates' : 
+            'Enter rate for 1-100 feet, then click Auto Fill to calculate all other rates (1-100, 101-200, 201-300... up to 1600+)' : 
             'Enter rate for 1-300 feet, then click Auto Fill to calculate all other rates'
           }
         </p>
+        <p className="text-xs text-blue-600 mb-4 text-center font-medium">
+          💡 Each row has an "Auto" button to set individual rates to default values
+        </p>
 
-        {/* Rate input fields - clean version */}
+        {/* Rate input fields with calculation pattern */}
         <div className="space-y-3">
           {rateFields
             .filter(field => !excludeFields.includes(field.key))
             .map((field, index) => (
-              <div key={field.key} className="flex items-center space-x-2">
+              <div key={field.key} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {field.label}
                   </label>
                   <input
                     type="number"
-                    value={slabRateConfig[type][field.key as keyof typeof slabRateConfig[typeof type]] || field.startRate}
+                    value={(slabRateConfig[type] as any)[field.key] || field.startRate}
                     onChange={(e) => setSlabRateConfig({
                       ...slabRateConfig,
                       [type]: {
                         ...slabRateConfig[type],
                         [field.key]: parseFloat(e.target.value) || field.startRate
-                      }
+                      } as any
                     })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     placeholder={field.startRate.toString()}
                   />
                 </div>
                 
+                {/* Manual calculation input */}
+                <div className="flex-shrink-0">
+                  <div className="text-xs text-gray-500 mb-1">Calc</div>
+                  <input
+                    type="text"
+                    value={calcValues[type]?.[field.key] || field.calc}
+                    onChange={(e) => {
+                      setCalcValues(prev => ({
+                        ...prev,
+                        [type]: {
+                          ...prev[type],
+                          [field.key]: e.target.value
+                        }
+                      }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const currentValue = calcValues[type]?.[field.key] || field.calc;
+                        const numericValue = parseInt(currentValue.replace(/[+-]/g, '')) || 0;
+                        const newValue = `+${numericValue + 5}`;
+                        setCalcValues(prev => ({
+                          ...prev,
+                          [type]: {
+                            ...prev[type],
+                            [field.key]: newValue
+                          }
+                        }));
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const currentValue = calcValues[type]?.[field.key] || field.calc;
+                        const numericValue = parseInt(currentValue.replace(/[+-]/g, '')) || 0;
+                        const newValue = numericValue - 5 >= 0 ? `+${numericValue - 5}` : `-${Math.abs(numericValue - 5)}`;
+                        setCalcValues(prev => ({
+                          ...prev,
+                          [type]: {
+                            ...prev[type],
+                            [field.key]: newValue
+                          }
+                        }));
+                      }
+                    }}
+                    className="w-16 border border-gray-300 rounded px-2 py-1 text-sm font-mono text-gray-700 text-center"
+                    placeholder="+0"
+                  />
+                </div>
               </div>
             ))}
         </div>
@@ -294,23 +379,54 @@ const SlabRateConfiguration: React.FC = () => {
 
   // Helper function to render system overview
   const renderSystemOverview = (type: 'type1' | 'type2' | 'type3', bgColor: string, textColor: string) => {
-    const ranges = [
-      { key: 'rate1_300', label: '1-300 ft' },
-      { key: 'rate301_400', label: '301-400 ft' },
-      { key: 'rate401_500', label: '401-500 ft' },
-      { key: 'rate501_600', label: '501-600 ft' },
-      { key: 'rate601_700', label: '601-700 ft' },
-      { key: 'rate701_800', label: '701-800 ft' },
-      { key: 'rate801_900', label: '801-900 ft' },
-      { key: 'rate901_1000', label: '901-1000 ft' },
-      { key: 'rate1001_1100', label: '1001-1100 ft' },
-      { key: 'rate1101_1200', label: '1101-1200 ft' },
-      { key: 'rate1201_1300', label: '1201-1300 ft' },
-      { key: 'rate1301_1400', label: '1301-1400 ft' },
-      { key: 'rate1401_1500', label: '1401-1500 ft' },
-      { key: 'rate1501_1600', label: '1501-1600 ft' },
-      { key: 'rate1600_plus', label: '1600+ ft' }
-    ];
+    let ranges: { key: string; label: string }[] = [];
+    
+    if (type === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments
+      ranges = [
+        { key: 'rate1_100', label: '1-100 ft' },
+        { key: 'rate101_200', label: '101-200 ft' },
+        { key: 'rate201_300', label: '201-300 ft' },
+        { key: 'rate301_400', label: '301-400 ft' },
+        { key: 'rate401_500', label: '401-500 ft' },
+        { key: 'rate501_600', label: '501-600 ft' },
+        { key: 'rate601_700', label: '601-700 ft' },
+        { key: 'rate701_800', label: '701-800 ft' },
+        { key: 'rate801_900', label: '801-900 ft' },
+        { key: 'rate901_1000', label: '901-1000 ft' },
+        { key: 'rate1001_1100', label: '1001-1100 ft' },
+        { key: 'rate1101_1200', label: '1101-1200 ft' },
+        { key: 'rate1201_1300', label: '1201-1300 ft' },
+        { key: 'rate1301_1400', label: '1301-1400 ft' },
+        { key: 'rate1401_1500', label: '1401-1500 ft' },
+        { key: 'rate1501_1600', label: '1501-1600 ft' },
+        { key: 'rate1600_plus', label: '1600+ ft' }
+      ];
+    } else {
+      // Original structure for type1 and type3
+      ranges = [
+        { key: 'rate1_300', label: '1-300 ft' },
+        { key: 'rate301_400', label: '301-400 ft' },
+        { key: 'rate401_500', label: '401-500 ft' },
+        { key: 'rate501_600', label: '501-600 ft' },
+        { key: 'rate601_700', label: '601-700 ft' },
+        { key: 'rate701_800', label: '701-800 ft' },
+        { key: 'rate801_900', label: '801-900 ft' },
+        { key: 'rate901_1000', label: '901-1000 ft' },
+        { key: 'rate1001_1100', label: '1001-1100 ft' },
+        { key: 'rate1101_1200', label: '1101-1200 ft' },
+        { key: 'rate1201_1300', label: '1201-1300 ft' },
+        { key: 'rate1301_1400', label: '1301-1400 ft' },
+        { key: 'rate1401_1500', label: '1401-1500 ft' },
+        { key: 'rate1501_1600', label: '1501-1600 ft' },
+        { key: 'rate1600_plus', label: '1600+ ft' }
+      ];
+      
+      // Add rate1_500 for type3
+      if (type === 'type3') {
+        ranges.push({ key: 'rate1_500', label: '1-500 ft' });
+      }
+    }
 
     return (
       <div className={`mt-6 p-4 ${bgColor} rounded-md max-h-64 overflow-y-auto`}>
@@ -318,7 +434,7 @@ const SlabRateConfiguration: React.FC = () => {
         <div className="text-xs text-blue-800 space-y-1">
           {ranges.map(range => (
             <div key={range.key}>
-              • {range.label}: ₹{slabRateConfig[type][range.key as keyof typeof slabRateConfig[typeof type]] || 0}/ft
+              • {range.label}: ₹{(slabRateConfig[type] as any)[range.key] || 0}/ft
             </div>
           ))}
         </div>
@@ -406,12 +522,12 @@ const SlabRateConfiguration: React.FC = () => {
                   className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-1 -mx-1"
                   placeholder="Enter slab name"
                 />
-                <p className="text-sm text-gray-600">Start from 1-500 feet</p>
+                <p className="text-sm text-gray-600">Enhanced 100-foot increments: 1-100, 101-200, 201-300... up to 1600+</p>
               </div>
             </div>
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {renderRateInputs('type2', ['rate1_300', 'rate301_400', 'rate401_500'])}
+              {renderRateInputs('type2')}
             </div>
 
             {/* Reset button inside slab */}

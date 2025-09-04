@@ -26,118 +26,265 @@ const saveToStorage = <T>(key: string, data: T[]): void => {
   }
 };
 
-// Default slab rates based on image pricing structure
+// Enhanced default slab rates with multiple slab types
 const DEFAULT_SLAB_RATES: Omit<SlabRate, 'id' | 'createdAt' | 'updatedAt'>[] = [
+  // Slab Type 1: Standard 300-foot increments
   {
-    name: '0-300 Feet',
+    name: '0-300 Feet (Type 1)',
     description: 'Initial drilling depth (0-300 feet)',
     fromDepth: 0,
     toDepth: 300,
-    ratePerFoot: 200,
+    ratePerFoot: 90,
     isActive: true
   },
   {
-    name: '301-400 Feet',
+    name: '301-400 Feet (Type 1)',
     description: 'Medium depth drilling (301-400 feet)',
     fromDepth: 301,
     toDepth: 400,
+    ratePerFoot: 100,
+    isActive: true
+  },
+  {
+    name: '401-500 Feet (Type 1)',
+    description: 'Deep drilling (401-500 feet)',
+    fromDepth: 401,
+    toDepth: 500,
     ratePerFoot: 120,
     isActive: true
   },
   {
-    name: '401-500 Feet',
-    description: 'Deep drilling (401-500 feet)',
-    fromDepth: 401,
-    toDepth: 500,
-    ratePerFoot: 130,
-    isActive: true
-  },
-  {
-    name: '501-600 Feet',
+    name: '501-600 Feet (Type 1)',
     description: 'Deep drilling (501-600 feet)',
     fromDepth: 501,
     toDepth: 600,
-    ratePerFoot: 130,
+    ratePerFoot: 150,
     isActive: true
   },
   {
-    name: '601-700 Feet',
+    name: '601-700 Feet (Type 1)',
     description: 'Deep drilling (601-700 feet)',
     fromDepth: 601,
     toDepth: 700,
-    ratePerFoot: 130,
+    ratePerFoot: 190,
     isActive: true
   },
   {
-    name: '701-800 Feet',
+    name: '701-800 Feet (Type 1)',
     description: 'Deep drilling (701-800 feet)',
     fromDepth: 701,
     toDepth: 800,
-    ratePerFoot: 130,
+    ratePerFoot: 240,
     isActive: true
   },
   {
-    name: '801-900 Feet',
+    name: '801-900 Feet (Type 1)',
     description: 'Deep drilling (801-900 feet)',
     fromDepth: 801,
     toDepth: 900,
-    ratePerFoot: 130,
+    ratePerFoot: 300,
     isActive: true
   },
   {
-    name: '901-1000 Feet',
+    name: '901-1000 Feet (Type 1)',
     description: 'Deep drilling (901-1000 feet)',
     fromDepth: 901,
     toDepth: 1000,
-    ratePerFoot: 130,
+    ratePerFoot: 370,
     isActive: true
   },
   {
-    name: '1001-1100 Feet',
+    name: '1001-1100 Feet (Type 1)',
     description: 'Deep drilling (1001-1100 feet)',
     fromDepth: 1001,
     toDepth: 1100,
-    ratePerFoot: 130,
+    ratePerFoot: 470,
     isActive: true
   },
   {
-    name: '1101-1200 Feet',
+    name: '1101-1200 Feet (Type 1)',
     description: 'Deep drilling (1101-1200 feet)',
     fromDepth: 1101,
     toDepth: 1200,
-    ratePerFoot: 130,
+    ratePerFoot: 570,
     isActive: true
   },
   {
-    name: '1201-1300 Feet',
+    name: '1201-1300 Feet (Type 1)',
     description: 'Deep drilling (1201-1300 feet)',
     fromDepth: 1201,
     toDepth: 1300,
-    ratePerFoot: 130,
+    ratePerFoot: 670,
     isActive: true
   },
   {
-    name: '1301-1400 Feet',
+    name: '1301-1400 Feet (Type 1)',
     description: 'Deep drilling (1301-1400 feet)',
     fromDepth: 1301,
     toDepth: 1400,
-    ratePerFoot: 130,
+    ratePerFoot: 770,
     isActive: true
   },
   {
-    name: '1401-1500 Feet',
+    name: '1401-1500 Feet (Type 1)',
     description: 'Deep drilling (1401-1500 feet)',
     fromDepth: 1401,
     toDepth: 1500,
-    ratePerFoot: 130,
+    ratePerFoot: 870,
     isActive: true
   },
   {
-    name: '1500+ Feet',
-    description: 'Beyond 1500 feet - Special pricing',
+    name: '1501-1600 Feet (Type 1)',
+    description: 'Deep drilling (1501-1600 feet)',
     fromDepth: 1501,
+    toDepth: 1600,
+    ratePerFoot: 970,
+    isActive: true
+  },
+  {
+    name: '1600+ Feet (Type 1)',
+    description: 'Beyond 1600 feet - Special pricing',
+    fromDepth: 1601,
     toDepth: 9999,
-    ratePerFoot: 130,
+    ratePerFoot: 1070,
+    isActive: true
+  },
+  
+  // Slab Type 2: Enhanced 100-foot increments
+  {
+    name: '1-100 Feet (Type 2)',
+    description: 'Initial drilling depth (1-100 feet)',
+    fromDepth: 1,
+    toDepth: 100,
+    ratePerFoot: 90,
+    isActive: true
+  },
+  {
+    name: '101-200 Feet (Type 2)',
+    description: 'Shallow drilling (101-200 feet)',
+    fromDepth: 101,
+    toDepth: 200,
+    ratePerFoot: 100,
+    isActive: true
+  },
+  {
+    name: '201-300 Feet (Type 2)',
+    description: 'Medium drilling (201-300 feet)',
+    fromDepth: 201,
+    toDepth: 300,
+    ratePerFoot: 120,
+    isActive: true
+  },
+  {
+    name: '301-400 Feet (Type 2)',
+    description: 'Medium drilling (301-400 feet)',
+    fromDepth: 301,
+    toDepth: 400,
+    ratePerFoot: 150,
+    isActive: true
+  },
+  {
+    name: '401-500 Feet (Type 2)',
+    description: 'Deep drilling (401-500 feet)',
+    fromDepth: 401,
+    toDepth: 500,
+    ratePerFoot: 190,
+    isActive: true
+  },
+  {
+    name: '501-600 Feet (Type 2)',
+    description: 'Deep drilling (501-600 feet)',
+    fromDepth: 501,
+    toDepth: 600,
+    ratePerFoot: 240,
+    isActive: true
+  },
+  {
+    name: '601-700 Feet (Type 2)',
+    description: 'Deep drilling (601-700 feet)',
+    fromDepth: 601,
+    toDepth: 700,
+    ratePerFoot: 300,
+    isActive: true
+  },
+  {
+    name: '701-800 Feet (Type 2)',
+    description: 'Deep drilling (701-800 feet)',
+    fromDepth: 701,
+    toDepth: 800,
+    ratePerFoot: 370,
+    isActive: true
+  },
+  {
+    name: '801-900 Feet (Type 2)',
+    description: 'Deep drilling (801-900 feet)',
+    fromDepth: 801,
+    toDepth: 900,
+    ratePerFoot: 450,
+    isActive: true
+  },
+  {
+    name: '901-1000 Feet (Type 2)',
+    description: 'Deep drilling (901-1000 feet)',
+    fromDepth: 901,
+    toDepth: 1000,
+    ratePerFoot: 550,
+    isActive: true
+  },
+  {
+    name: '1001-1100 Feet (Type 2)',
+    description: 'Deep drilling (1001-1100 feet)',
+    fromDepth: 1001,
+    toDepth: 1100,
+    ratePerFoot: 660,
+    isActive: true
+  },
+  {
+    name: '1101-1200 Feet (Type 2)',
+    description: 'Deep drilling (1101-1200 feet)',
+    fromDepth: 1101,
+    toDepth: 1200,
+    ratePerFoot: 780,
+    isActive: true
+  },
+  {
+    name: '1201-1300 Feet (Type 2)',
+    description: 'Deep drilling (1201-1300 feet)',
+    fromDepth: 1201,
+    toDepth: 1300,
+    ratePerFoot: 910,
+    isActive: true
+  },
+  {
+    name: '1301-1400 Feet (Type 2)',
+    description: 'Deep drilling (1301-1400 feet)',
+    fromDepth: 1301,
+    toDepth: 1400,
+    ratePerFoot: 1050,
+    isActive: true
+  },
+  {
+    name: '1401-1500 Feet (Type 2)',
+    description: 'Deep drilling (1401-1500 feet)',
+    fromDepth: 1401,
+    toDepth: 1500,
+    ratePerFoot: 1200,
+    isActive: true
+  },
+  {
+    name: '1501-1600 Feet (Type 2)',
+    description: 'Deep drilling (1501-1600 feet)',
+    fromDepth: 1501,
+    toDepth: 1600,
+    ratePerFoot: 1360,
+    isActive: true
+  },
+  {
+    name: '1600+ Feet (Type 2)',
+    description: 'Beyond 1600 feet - Special pricing',
+    fromDepth: 1601,
+    toDepth: 9999,
+    ratePerFoot: 1520,
     isActive: true
   }
 ];
@@ -264,6 +411,99 @@ export const slabRateService = {
 
   resetToDefaults: (): SlabRate[] => {
     return resetToDefaultSlabRates();
+  },
+
+  // Generate slab rates from configuration
+  generateFromConfig: (config: any, slabType: 'type1' | 'type2' | 'type3'): SlabRate[] => {
+    const rates: SlabRate[] = [];
+    const currentTime = new Date();
+    
+    if (slabType === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments
+      const type2Ranges = [
+        { key: 'rate1_100', from: 1, to: 100 },
+        { key: 'rate101_200', from: 101, to: 200 },
+        { key: 'rate201_300', from: 201, to: 300 },
+        { key: 'rate301_400', from: 301, to: 400 },
+        { key: 'rate401_500', from: 401, to: 500 },
+        { key: 'rate501_600', from: 501, to: 600 },
+        { key: 'rate601_700', from: 601, to: 700 },
+        { key: 'rate701_800', from: 701, to: 800 },
+        { key: 'rate801_900', from: 801, to: 900 },
+        { key: 'rate901_1000', from: 901, to: 1000 },
+        { key: 'rate1001_1100', from: 1001, to: 1100 },
+        { key: 'rate1101_1200', from: 1101, to: 1200 },
+        { key: 'rate1201_1300', from: 1201, to: 1300 },
+        { key: 'rate1301_1400', from: 1301, to: 1400 },
+        { key: 'rate1401_1500', from: 1401, to: 1500 },
+        { key: 'rate1501_1600', from: 1501, to: 1600 },
+        { key: 'rate1600_plus', from: 1601, to: 9999 }
+      ];
+      
+      type2Ranges.forEach(range => {
+        rates.push({
+          id: uuidv4(),
+          name: `${range.from}-${range.to === 9999 ? '∞' : range.to} Feet (Type 2)`,
+          description: `Drilling depth (${range.from}-${range.to === 9999 ? '∞' : range.to} feet)`,
+          fromDepth: range.from,
+          toDepth: range.to,
+          ratePerFoot: config[range.key] || 90,
+          isActive: true,
+          createdAt: currentTime,
+          updatedAt: currentTime
+        });
+      });
+    } else {
+      // Original structure for type1 and type3
+      const standardRanges = [
+        { key: 'rate1_300', from: 0, to: 300 },
+        { key: 'rate301_400', from: 301, to: 400 },
+        { key: 'rate401_500', from: 401, to: 500 },
+        { key: 'rate501_600', from: 501, to: 600 },
+        { key: 'rate601_700', from: 601, to: 700 },
+        { key: 'rate701_800', from: 701, to: 800 },
+        { key: 'rate801_900', from: 801, to: 900 },
+        { key: 'rate901_1000', from: 901, to: 1000 },
+        { key: 'rate1001_1100', from: 1001, to: 1100 },
+        { key: 'rate1101_1200', from: 1101, to: 1200 },
+        { key: 'rate1201_1300', from: 1201, to: 1300 },
+        { key: 'rate1301_1400', from: 1301, to: 1400 },
+        { key: 'rate1401_1500', from: 1401, to: 1500 },
+        { key: 'rate1501_1600', from: 1501, to: 1600 },
+        { key: 'rate1600_plus', from: 1601, to: 9999 }
+      ];
+      
+      standardRanges.forEach(range => {
+        rates.push({
+          id: uuidv4(),
+          name: `${range.from}-${range.to === 9999 ? '∞' : range.to} Feet (Type ${slabType === 'type1' ? '1' : '3'})`,
+          description: `Drilling depth (${range.from}-${range.to === 9999 ? '∞' : range.to} feet)`,
+          fromDepth: range.from,
+          toDepth: range.to,
+          ratePerFoot: config[range.key] || 90,
+          isActive: true,
+          createdAt: currentTime,
+          updatedAt: currentTime
+        });
+      });
+      
+      // Add rate1_500 for type3
+      if (slabType === 'type3') {
+        rates.push({
+          id: uuidv4(),
+          name: '1-500 Feet (Type 3)',
+          description: 'Drilling depth (1-500 feet)',
+          fromDepth: 1,
+          toDepth: 500,
+          ratePerFoot: config.rate1_500 || 90,
+          isActive: true,
+          createdAt: currentTime,
+          updatedAt: currentTime
+        });
+      }
+    }
+    
+    return rates;
   }
 };
 
