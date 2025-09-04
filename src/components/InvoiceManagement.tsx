@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ServiceInvoice, Customer, InvoiceItem, ServiceDetails } from '../types';
 import { customerService } from '../services/borewellService';
+import { serviceTypeService } from '../services/serviceTypeService';
 import EnhancedInvoiceForm from './EnhancedInvoiceForm';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -256,11 +257,17 @@ const InvoiceManagement: React.FC = () => {
     }
   });
 
-  const [showCustomServiceInput, setShowCustomServiceInput] = useState(false);
-  const [customServiceTypes, setCustomServiceTypes] = useState<string[]>([]);
+  const [slabNames, setSlabNames] = useState({
+    type1: 'Slab #1',
+    type2: 'Slab #2', 
+    type3: 'Slab #3'
+  });
 
-  // Predefined service types
-  const predefinedServiceTypes = ['Bore Drilling', 'Repair', 'Flushing', 'Earth Purpose'];
+  // Custom slabs state
+  const [customSlabs, setCustomSlabs] = useState<any[]>([]);
+
+  const [showCustomServiceInput, setShowCustomServiceInput] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -349,6 +356,20 @@ const InvoiceManagement: React.FC = () => {
         
         setSlabRateConfig(mergedConfig);
       }
+      
+      // Load custom slab names
+      const savedNames = localStorage.getItem('anjaneya_slab_names');
+      if (savedNames) {
+        const parsedNames = JSON.parse(savedNames);
+        setSlabNames(parsedNames);
+      }
+
+      // Load custom slabs
+      const savedCustomSlabs = localStorage.getItem('anjaneya_custom_slabs');
+      if (savedCustomSlabs) {
+        const parsedCustomSlabs = JSON.parse(savedCustomSlabs);
+        setCustomSlabs(parsedCustomSlabs);
+      }
     } catch (error) {
       console.error('Error loading slab rate config:', error);
     }
@@ -357,8 +378,18 @@ const InvoiceManagement: React.FC = () => {
   const calculateEditRates = useCallback(() => {
     if (!slabRateConfig || editDepth <= 0) return;
 
-    const typeKey = `type${editSlabRateType}` as keyof typeof slabRateConfig;
-    const rates = generateDefaultRatesForEdit(editStartingRate, typeKey);
+    let rates: { [key: string]: number };
+    
+    // Check if it's a custom slab
+    const customSlab = customSlabs.find(slab => slab.id === editSlabRateType);
+    if (customSlab) {
+      // Use custom slab rates
+      rates = customSlab.rates;
+    } else {
+      // Use standard slab rates
+      const typeKey = `type${editSlabRateType}` as keyof typeof slabRateConfig;
+      rates = generateDefaultRatesForEdit(editStartingRate, typeKey);
+    }
     
     const slabCost = calculateSlabRateByRangesForEdit(editDepth, rates, editSlabRateType);
     const pvc7Cost = editPVC7 * editPVC7Rate;
@@ -377,7 +408,7 @@ const InvoiceManagement: React.FC = () => {
       total,
       rates
     });
-  }, [slabRateConfig, editDepth, editSlabRateType, editStartingRate, editPVC7, editPVC10, editPVC7Rate, editPVC10Rate, editBata]);
+  }, [slabRateConfig, editDepth, editSlabRateType, editStartingRate, editPVC7, editPVC10, editPVC7Rate, editPVC10Rate, editBata, customSlabs]);
 
   // Auto-calculate when values change
   useEffect(() => {
@@ -385,11 +416,43 @@ const InvoiceManagement: React.FC = () => {
   }, [calculateEditRates]);
 
   useEffect(() => {
-    const filtered = invoices.filter(invoice =>
-      invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.serviceDetails.serviceType.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = invoices.filter(invoice => {
+      const searchLower = searchTerm.toLowerCase();
+      
+      // Search in customer details
+      const customerMatch = 
+        invoice.customer.name.toLowerCase().includes(searchLower) ||
+        invoice.customer.phoneNumber.includes(searchTerm) ||
+        (invoice.customer.whatsappNumber && invoice.customer.whatsappNumber.includes(searchTerm)) ||
+        (invoice.customer.email && invoice.customer.email.toLowerCase().includes(searchLower)) ||
+        invoice.customer.address.toLowerCase().includes(searchLower);
+      
+      // Search in invoice details
+      const invoiceMatch = 
+        invoice.invoiceNumber.toLowerCase().includes(searchLower) ||
+        invoice.serviceDetails.serviceType.toLowerCase().includes(searchLower) ||
+        invoice.serviceDetails.location.toLowerCase().includes(searchLower) ||
+        (invoice.serviceDetails.description && invoice.serviceDetails.description.toLowerCase().includes(searchLower));
+      
+      // Search in amounts (convert to string for partial matching)
+      const amountMatch = 
+        invoice.totalAmount.toString().includes(searchTerm) ||
+        invoice.paidAmount.toString().includes(searchTerm) ||
+        invoice.pendingAmount.toString().includes(searchTerm);
+      
+      // Search in status
+      const statusMatch = 
+        invoice.status.toLowerCase().includes(searchLower);
+      
+      // Search in dates (format dates as strings)
+      const invoiceDate = new Date(invoice.invoiceDate).toLocaleDateString('en-IN');
+      const dueDate = new Date(invoice.dueDate).toLocaleDateString('en-IN');
+      const dateMatch = 
+        invoiceDate.includes(searchTerm) ||
+        dueDate.includes(searchTerm);
+      
+      return customerMatch || invoiceMatch || amountMatch || statusMatch || dateMatch;
+    });
     setFilteredInvoices(filtered);
   }, [invoices, searchTerm]);
 
@@ -404,10 +467,9 @@ const InvoiceManagement: React.FC = () => {
       setInvoices(allInvoices);
       setFilteredInvoices(allInvoices);
 
-      // Load custom service types from localStorage
-      const storedCustomTypes = localStorage.getItem('anjaneya_custom_service_types');
-      const customTypes = storedCustomTypes ? JSON.parse(storedCustomTypes) : [];
-      setCustomServiceTypes(customTypes);
+      // Load service types from service
+      const allServiceTypes = serviceTypeService.getAllServiceTypes();
+      setServiceTypes(allServiceTypes);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -490,7 +552,7 @@ const InvoiceManagement: React.FC = () => {
         totalAmount: invoiceData.calculatedRates.total,
         paidAmount: invoiceData.advanceAmount,
         pendingAmount: invoiceData.calculatedRates.total - invoiceData.advanceAmount,
-        status: 'DRAFT',
+        status: 'PENDING',
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         invoiceDate: new Date(),
         createdAt: new Date(),
@@ -729,22 +791,23 @@ const InvoiceManagement: React.FC = () => {
     }
 
     const newType = formData.customServiceType.trim();
-    if (predefinedServiceTypes.includes(newType) || customServiceTypes.includes(newType)) {
-      toast.error('This service type already exists');
-      return;
-    }
-
-    const updatedCustomTypes = [...customServiceTypes, newType];
-    setCustomServiceTypes(updatedCustomTypes);
-    localStorage.setItem('anjaneya_custom_service_types', JSON.stringify(updatedCustomTypes));
+    const success = serviceTypeService.addCustomServiceType(newType);
     
-    setFormData({
-      ...formData,
-      serviceType: newType,
-      customServiceType: ''
-    });
-    setShowCustomServiceInput(false);
-    toast.success('Custom service type added successfully');
+    if (success) {
+      // Reload service types
+      const allServiceTypes = serviceTypeService.getAllServiceTypes();
+      setServiceTypes(allServiceTypes);
+      
+      setFormData({
+        ...formData,
+        serviceType: newType,
+        customServiceType: ''
+      });
+      setShowCustomServiceInput(false);
+      toast.success('Custom service type added successfully');
+    } else {
+      toast.error('This service type already exists');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -897,7 +960,7 @@ const InvoiceManagement: React.FC = () => {
       const newInvoice: ServiceInvoice = {
         ...result.data,
         customer,
-        status: 'DRAFT',
+        status: 'PENDING',
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         invoiceDate: new Date(),
         createdAt: new Date(),
@@ -1253,9 +1316,8 @@ const InvoiceManagement: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PAID': return 'bg-green-100 text-green-800';
-      case 'SENT': return 'bg-blue-100 text-blue-800';
-      case 'OVERDUE': return 'bg-red-100 text-red-800';
-      case 'DRAFT': return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -1340,12 +1402,17 @@ const InvoiceManagement: React.FC = () => {
           </div>
           <input
             type="text"
-            placeholder="Search invoices..."
+            placeholder="Search by name, mobile, address, invoice #, amount, status, date..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           />
         </div>
+        {searchTerm && (
+          <p className="mt-1 text-xs text-gray-500">
+            Searching in: Customer name, mobile, email, address, invoice number, service type, location, amounts, status, and dates
+          </p>
+        )}
       </div>
 
       {/* Invoices Grid */}
@@ -1512,10 +1579,7 @@ const InvoiceManagement: React.FC = () => {
                                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                  >
                                    <option value="">Select a service type</option>
-                                   {predefinedServiceTypes.map(type => (
-                                     <option key={type} value={type}>{type}</option>
-                                   ))}
-                                   {customServiceTypes.map(type => (
+                                   {serviceTypes.map(type => (
                                      <option key={type} value={type}>{type}</option>
                                    ))}
                                    <option value="custom">+ Add Custom Service Type</option>
@@ -1618,7 +1682,7 @@ const InvoiceManagement: React.FC = () => {
                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                                  />
                                  <div className="ml-3">
-                                   <div className="text-sm font-medium text-gray-900">Type #1</div>
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type1}</div>
                                    <div className="text-xs text-gray-500">1-300 feet at ₹{slabRateConfig.type1.rate1_300}/ft</div>
                                  </div>
                                </label>
@@ -1633,7 +1697,7 @@ const InvoiceManagement: React.FC = () => {
                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                                  />
                                  <div className="ml-3">
-                                   <div className="text-sm font-medium text-gray-900">Type #2</div>
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type2}</div>
                                    <div className="text-xs text-gray-500">1-500 feet at ₹{slabRateConfig.type2.rate1_500}/ft</div>
                                  </div>
                                </label>
@@ -1648,7 +1712,7 @@ const InvoiceManagement: React.FC = () => {
                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                                  />
                                  <div className="ml-3">
-                                   <div className="text-sm font-medium text-gray-900">Type #3</div>
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type3}</div>
                                    <div className="text-xs text-gray-500">Rebore/Extension</div>
                                  </div>
                                </label>
@@ -1766,13 +1830,13 @@ const InvoiceManagement: React.FC = () => {
                                      onChange={(e) => setFormData({ ...formData, reboreSlabType: e.target.value })}
                                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                    >
-                                     <option value="1">Type #1 (1-300 ft system)</option>
-                                     <option value="2">Type #2 (1-500 ft system)</option>
+                                     <option value="1">{slabNames.type1} (1-300 ft system)</option>
+                                     <option value="2">{slabNames.type2} (1-500 ft system)</option>
                                    </select>
                                  </div>
                                </div>
                                <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded border">
-                                 <strong>Note:</strong> New drilling will start from {formData.existingBoreDepth} feet and use {formData.reboreSlabType === '1' ? 'Type #1' : 'Type #2'} slab rate system.
+                                 <strong>Note:</strong> New drilling will start from {formData.existingBoreDepth} feet and use {formData.reboreSlabType === '1' ? slabNames.type1 : slabNames.type2} slab rate system.
                                </div>
                              </div>
                            )}
@@ -1785,9 +1849,9 @@ const InvoiceManagement: React.FC = () => {
                                                            {/* Depth-based breakdown */}
                               <div className="mb-3">
                                 <h6 className="text-xs font-medium text-gray-700 mb-2">
-                                  {formData.slabRateType === '1' ? 'Type #1: 1-300 feet Slab Rate' : 
-                                   formData.slabRateType === '2' ? 'Type #2: 1-500 feet Slab Rate' : 
-                                   'Type #3: Rebore/Extension Slab Rate'}
+                                  {formData.slabRateType === '1' ? `${slabNames.type1}: 1-300 feet Slab Rate` : 
+                                   formData.slabRateType === '2' ? `${slabNames.type2}: 1-500 feet Slab Rate` : 
+                                   `${slabNames.type3}: Rebore/Extension Slab Rate`}
                                 </h6>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs max-h-64 overflow-y-auto">
                                                                      {formData.slabRateType === '1' && (
@@ -1996,8 +2060,8 @@ const InvoiceManagement: React.FC = () => {
                       <h3 className="text-lg leading-6 font-medium text-gray-900">
                         Invoice #{viewingInvoice.invoiceNumber || 'N/A'}
                       </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingInvoice.status || 'DRAFT')}`}>
-                        {viewingInvoice.status || 'DRAFT'}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingInvoice.status || 'PENDING')}`}>
+                        {viewingInvoice.status || 'PENDING'}
                       </span>
                     </div>
                     
@@ -2252,11 +2316,14 @@ const InvoiceManagement: React.FC = () => {
 
                   // Use calculated rates if available, otherwise fallback to simple calculation
                   if (editCalculatedRates) {
+                    // Check if it's a custom slab
+                    const customSlab = customSlabs.find(slab => slab.id === editSlabRateType);
+                    
                     // Add drilling service item with calculated slab cost
                     if (editCalculatedRates.slabCost > 0) {
                       newItems.push({ 
                         id: `drill_${Date.now()}`, 
-                        description: `Drilling - ${editDepth} feet (Slab Type ${editSlabRateType})`, 
+                        description: `Drilling - ${editDepth} feet (${customSlab ? customSlab.name : slabNames[`type${editSlabRateType}` as keyof typeof slabNames]})`, 
                         quantity: editDepth, 
                         unit: 'feet', 
                         rate: editCalculatedRates.slabCost / editDepth, 
@@ -2349,9 +2416,14 @@ const InvoiceManagement: React.FC = () => {
                           onChange={(e) => setEditSlabRateType(e.target.value)}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         >
-                          <option value="1">Type 1: Standard (1-300, 301-400...)</option>
-                          <option value="2">Type 2: Enhanced (1-100, 101-200...)</option>
-                          <option value="3">Type 3: Manual Configuration</option>
+                          <option value="1">{slabNames.type1}: Standard (1-300, 301-400...)</option>
+                          <option value="2">{slabNames.type2}: Enhanced (1-100, 101-200...)</option>
+                          <option value="3">{slabNames.type3}: Manual Configuration</option>
+                          {customSlabs.map((slab) => (
+                            <option key={slab.id} value={slab.id}>
+                              {slab.name}: Custom ({slab.ranges.length} ranges)
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -2420,9 +2492,8 @@ const InvoiceManagement: React.FC = () => {
                         value={editingInvoice.status}
                         onChange={(e) => setEditingInvoice({ ...editingInvoice, status: e.target.value as any })}
                       >
-                        <option value="SENT">SENT</option>
+                        <option value="PENDING">PENDING</option>
                         <option value="PAID">PAID</option>
-                        <option value="OVERDUE">OVERDUE</option>
                         <option value="CANCELLED">CANCELLED</option>
                       </select>
                     </div>

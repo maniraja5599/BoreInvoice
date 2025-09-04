@@ -94,7 +94,7 @@ export interface ServiceDetails {
   materials?: string[];
 }
 
-export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+export type InvoiceStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 
 export interface ServiceReport {
   id: string;

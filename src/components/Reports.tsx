@@ -176,7 +176,7 @@ const Reports: React.FC = () => {
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Invoice Status Distribution</h3>
           <div className="space-y-3">
-            {['DRAFT', 'SENT', 'PAID'].map(status => {
+            {['PENDING', 'PAID', 'CANCELLED'].map(status => {
               const count = invoices.filter(p => p.status === status).length;
               const percentage = invoices.length > 0 ? (count / invoices.length) * 100 : 0;
               return (
@@ -298,8 +298,9 @@ const Reports: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       invoice.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                      invoice.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      invoice.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      invoice.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
                       {invoice.status}
                     </span>

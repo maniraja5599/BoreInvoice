@@ -3,6 +3,23 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+interface SlabRange {
+  start: number;
+  end: number;
+  label: string;
+  key: string;
+}
+
+interface CustomSlab {
+  id: string;
+  name: string;
+  ranges: SlabRange[];
+  rates: { [key: string]: number };
+  calcValues: { [key: string]: string };
+  startRate: number;
+  incrementPattern: number[];
+}
+
 interface SlabRateConfig {
   type1: {
     rate1_300: number;
@@ -70,6 +87,14 @@ const SlabRateConfiguration: React.FC = () => {
     type2: 'Slab #2', 
     type3: 'Slab #3'
   });
+
+  // Custom slabs state
+  const [customSlabs, setCustomSlabs] = useState<CustomSlab[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newSlabName, setNewSlabName] = useState('');
+  const [newSlabRanges, setNewSlabRanges] = useState<SlabRange[]>([]);
+  const [newSlabStartRate, setNewSlabStartRate] = useState(75);
+  const [newSlabIncrementPattern, setNewSlabIncrementPattern] = useState<number[]>([]);
 
   
   // Generate default rates using the new rate structure
@@ -166,12 +191,36 @@ const SlabRateConfiguration: React.FC = () => {
         console.error('Error loading slab names:', error);
       }
     }
+
+    // Load custom slabs
+    const savedCustomSlabs = localStorage.getItem('anjaneya_custom_slabs');
+    if (savedCustomSlabs) {
+      try {
+        const parsed = JSON.parse(savedCustomSlabs);
+        setCustomSlabs(parsed);
+      } catch (error) {
+        console.error('Error loading custom slabs:', error);
+      }
+    }
   }, []);
+
+  // Keep increments in sync with ranges
+  useEffect(() => {
+    if (newSlabRanges.length > newSlabIncrementPattern.length) {
+      // Add missing increments
+      const missingIncrements = newSlabRanges.length - newSlabIncrementPattern.length;
+      setNewSlabIncrementPattern(prev => [...prev, ...Array(missingIncrements).fill(0)]);
+    } else if (newSlabRanges.length < newSlabIncrementPattern.length) {
+      // Remove excess increments
+      setNewSlabIncrementPattern(prev => prev.slice(0, newSlabRanges.length));
+    }
+  }, [newSlabRanges.length, newSlabIncrementPattern.length]);
 
   const saveConfiguration = () => {
     try {
       localStorage.setItem('anjaneya_slab_rate_config', JSON.stringify(slabRateConfig));
       localStorage.setItem('anjaneya_slab_names', JSON.stringify(slabNames));
+      localStorage.setItem('anjaneya_custom_slabs', JSON.stringify(customSlabs));
       toast.success('Configuration saved successfully!');
     } catch (error) {
       toast.error('Failed to save configuration');
@@ -187,6 +236,26 @@ const SlabRateConfiguration: React.FC = () => {
     });
 
     toast.success(`${slabNames[slabType]} reset to default values`);
+  };
+
+  const deleteSlab = (slabType: 'type1' | 'type2' | 'type3') => {
+    if (window.confirm(`Are you sure you want to delete ${slabNames[slabType]}? This action cannot be undone.`)) {
+      // Reset the slab to default values (effectively "deleting" custom rates)
+      const defaultRates = generateDefaultRates(75, slabType) as any;
+      
+      setSlabRateConfig({
+        ...slabRateConfig,
+        [slabType]: defaultRates
+      });
+
+      // Reset the slab name to default
+      setSlabNames({
+        ...slabNames,
+        [slabType]: `Slab #${slabType === 'type1' ? '1' : slabType === 'type2' ? '2' : '3'}`
+      });
+
+      toast.success(`${slabNames[slabType]} has been reset to defaults!`);
+    }
   };
 
   // Helper function to render rate input fields
@@ -442,6 +511,176 @@ const SlabRateConfiguration: React.FC = () => {
     );
   };
 
+  // Custom slab functions
+  const generateCustomSlabRates = (ranges: SlabRange[], startRate: number, incrementPattern: number[]) => {
+    const rates: { [key: string]: number } = {};
+    ranges.forEach((range, index) => {
+      const increment = incrementPattern[index] || 0;
+      rates[range.key] = startRate + increment;
+    });
+    return rates;
+  };
+
+  const addRange = () => {
+    let newStart: number;
+    let newEnd: number;
+    
+    if (newSlabRanges.length === 0) {
+      // First range: 1-100
+      newStart = 1;
+      newEnd = 100;
+    } else {
+      // Get the last range's end value and create next range
+      const lastRange = newSlabRanges[newSlabRanges.length - 1];
+      newStart = lastRange.end + 1;
+      newEnd = newStart + 99; // 100-foot increments
+    }
+    
+    const newRange: SlabRange = {
+      start: newStart,
+      end: newEnd,
+      label: `${newStart}-${newEnd} ft`,
+      key: `rate${newStart}_${newEnd}`
+    };
+    
+    setNewSlabRanges([...newSlabRanges, newRange]);
+    // Automatically add a corresponding increment
+    setNewSlabIncrementPattern([...newSlabIncrementPattern, 0]);
+  };
+
+  const updateRange = (index: number, field: keyof SlabRange, value: string | number) => {
+    const updatedRanges = [...newSlabRanges];
+    updatedRanges[index] = { ...updatedRanges[index], [field]: value };
+    
+    // Update label and key when start/end changes
+    if (field === 'start' || field === 'end') {
+      const range = updatedRanges[index];
+      range.label = `${range.start}-${range.end} ft`;
+      range.key = `rate${range.start}_${range.end}`;
+      
+      // If this is the end value and there are subsequent ranges, 
+      // we might want to recalculate them, but for now we'll leave them as is
+      // to allow manual customization
+    }
+    
+    setNewSlabRanges(updatedRanges);
+  };
+
+  const removeRange = (index: number) => {
+    setNewSlabRanges(newSlabRanges.filter((_, i) => i !== index));
+    // Also remove the corresponding increment
+    setNewSlabIncrementPattern(newSlabIncrementPattern.filter((_, i) => i !== index));
+  };
+
+  const addIncrement = () => {
+    setNewSlabIncrementPattern([...newSlabIncrementPattern, 0]);
+  };
+
+  const updateIncrement = (index: number, value: number) => {
+    const updated = [...newSlabIncrementPattern];
+    updated[index] = value;
+    setNewSlabIncrementPattern(updated);
+  };
+
+  const removeIncrement = (index: number) => {
+    setNewSlabIncrementPattern(newSlabIncrementPattern.filter((_, i) => i !== index));
+    // Also remove the corresponding range
+    setNewSlabRanges(newSlabRanges.filter((_, i) => i !== index));
+  };
+
+  const createCustomSlab = () => {
+    if (!newSlabName.trim()) {
+      toast.error('Please enter a slab name');
+      return;
+    }
+    if (newSlabRanges.length === 0) {
+      toast.error('Please add at least one range');
+      return;
+    }
+    if (newSlabIncrementPattern.length !== newSlabRanges.length) {
+      toast.error(`Please set increment for each range. You have ${newSlabRanges.length} ranges but ${newSlabIncrementPattern.length} increments.`);
+      return;
+    }
+    
+    // Check if all increments are valid numbers
+    const hasInvalidIncrements = newSlabIncrementPattern.some(inc => isNaN(inc) || inc < 0);
+    if (hasInvalidIncrements) {
+      toast.error('Please enter valid increment values (numbers >= 0)');
+      return;
+    }
+    
+    // Check if starting rate is valid
+    if (newSlabStartRate < 0) {
+      toast.error('Starting rate must be 0 or greater');
+      return;
+    }
+
+    const newSlab: CustomSlab = {
+      id: `custom_${Date.now()}`,
+      name: newSlabName,
+      ranges: newSlabRanges,
+      rates: generateCustomSlabRates(newSlabRanges, newSlabStartRate, newSlabIncrementPattern),
+      calcValues: {},
+      startRate: newSlabStartRate,
+      incrementPattern: newSlabIncrementPattern
+    };
+
+    setCustomSlabs([...customSlabs, newSlab]);
+    
+    // Show success message with rate summary
+    const rateSummary = newSlabRanges.map((range, index) => {
+      const increment = newSlabIncrementPattern[index] || 0;
+      const rate = newSlabStartRate + increment;
+      return `${range.label}: ₹${rate}/ft`;
+    }).join(', ');
+    
+    setShowCreateModal(false);
+    setNewSlabName('');
+    setNewSlabRanges([]);
+    setNewSlabStartRate(75);
+    setNewSlabIncrementPattern([]);
+    toast.success(`Custom slab "${newSlabName}" created successfully! Rates: ${rateSummary}`);
+  };
+
+  const deleteCustomSlab = (id: string) => {
+    setCustomSlabs(customSlabs.filter(slab => slab.id !== id));
+    toast.success('Custom slab deleted successfully!');
+  };
+
+  const updateCustomSlabRate = (slabId: string, rangeKey: string, value: number) => {
+    setCustomSlabs(customSlabs.map(slab => 
+      slab.id === slabId 
+        ? { ...slab, rates: { ...slab.rates, [rangeKey]: value } }
+        : slab
+    ));
+  };
+
+  const updateCustomSlabCalc = (slabId: string, rangeKey: string, value: string) => {
+    setCustomSlabs(customSlabs.map(slab => 
+      slab.id === slabId 
+        ? { ...slab, calcValues: { ...slab.calcValues, [rangeKey]: value } }
+        : slab
+    ));
+  };
+
+  const autoFillCustomSlab = (slabId: string) => {
+    const slab = customSlabs.find(s => s.id === slabId);
+    if (!slab) return;
+
+    const newRates: { [key: string]: number } = {};
+    slab.ranges.forEach((range, index) => {
+      const calcValue = slab.calcValues[range.key] || slab.incrementPattern[index]?.toString() || '0';
+      const increment = parseInt(calcValue) || 0;
+      newRates[range.key] = slab.startRate + increment;
+    });
+
+    setCustomSlabs(customSlabs.map(s => 
+      s.id === slabId 
+        ? { ...s, rates: newRates }
+        : s
+    ));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -462,6 +701,12 @@ const SlabRateConfiguration: React.FC = () => {
             </div>
             <div className="flex space-x-3">
               <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Create Custom Slab
+              </button>
+              <button
                 onClick={saveConfiguration}
                 className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -474,20 +719,31 @@ const SlabRateConfiguration: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Slab #1: 1-300 feet system */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-lg">1</span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-lg">1</span>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={slabNames.type1}
+                    onChange={(e) => setSlabNames({...slabNames, type1: e.target.value})}
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -mx-1"
+                    placeholder="Enter slab name"
+                  />
+                  <p className="text-sm text-gray-600">Start from 1-300 feet</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={slabNames.type1}
-                  onChange={(e) => setSlabNames({...slabNames, type1: e.target.value})}
-                  className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -mx-1"
-                  placeholder="Enter slab name"
-                />
-                <p className="text-sm text-gray-600">Start from 1-300 feet</p>
-              </div>
+              <button
+                onClick={() => deleteSlab('type1')}
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                title="Delete slab configuration"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -510,20 +766,31 @@ const SlabRateConfiguration: React.FC = () => {
 
           {/* Slab #2: 1-500 feet system */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-600 font-bold text-lg">2</span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 font-bold text-lg">2</span>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={slabNames.type2}
+                    onChange={(e) => setSlabNames({...slabNames, type2: e.target.value})}
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-1 -mx-1"
+                    placeholder="Enter slab name"
+                  />
+                  <p className="text-sm text-gray-600">Enhanced 100-foot increments: 1-100, 101-200, 201-300... up to 1600+</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={slabNames.type2}
-                  onChange={(e) => setSlabNames({...slabNames, type2: e.target.value})}
-                  className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-1 -mx-1"
-                  placeholder="Enter slab name"
-                />
-                <p className="text-sm text-gray-600">Enhanced 100-foot increments: 1-100, 101-200, 201-300... up to 1600+</p>
-              </div>
+              <button
+                onClick={() => deleteSlab('type2')}
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                title="Delete slab configuration"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -546,20 +813,31 @@ const SlabRateConfiguration: React.FC = () => {
 
           {/* Slab #3: Manual configuration */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 font-bold text-lg">3</span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-purple-600 font-bold text-lg">3</span>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={slabNames.type3}
+                    onChange={(e) => setSlabNames({...slabNames, type3: e.target.value})}
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-purple-500 rounded px-1 -mx-1"
+                    placeholder="Enter slab name"
+                  />
+                  <p className="text-sm text-gray-600">Manual configuration</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={slabNames.type3}
-                  onChange={(e) => setSlabNames({...slabNames, type3: e.target.value})}
-                  className="text-xl font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-purple-500 rounded px-1 -mx-1"
-                  placeholder="Enter slab name"
-                />
-                <p className="text-sm text-gray-600">Manual configuration</p>
-              </div>
+              <button
+                onClick={() => deleteSlab('type3')}
+                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                title="Delete slab configuration"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -580,6 +858,288 @@ const SlabRateConfiguration: React.FC = () => {
             {renderSystemOverview('type3', 'bg-purple-50', 'text-purple-800')}
           </div>
         </div>
+
+        {/* Custom Slabs Section */}
+        {customSlabs.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Custom Slabs</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {customSlabs.map((slab, index) => (
+                <div key={slab.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 font-bold text-lg">{index + 4}</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{slab.name}</h3>
+                        <p className="text-sm text-gray-600">{slab.ranges.length} ranges</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteCustomSlab(slab.id)}
+                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                      title="Delete custom slab"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {slab.ranges.map((range, rangeIndex) => (
+                      <div key={range.key} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-700">{range.label}</label>
+                          <input
+                            type="number"
+                            value={slab.rates[range.key] || 0}
+                            onChange={(e) => updateCustomSlabRate(slab.id, range.key, parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Rate"
+                          />
+                        </div>
+                        <div className="w-16">
+                          <label className="block text-xs font-medium text-gray-700">Calc</label>
+                          <input
+                            type="text"
+                            value={slab.calcValues[range.key] || slab.incrementPattern[rangeIndex]?.toString() || '0'}
+                            onChange={(e) => updateCustomSlabCalc(slab.id, range.key, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                const current = parseInt(e.currentTarget.value) || 0;
+                                updateCustomSlabCalc(slab.id, range.key, (current + 5).toString());
+                              } else if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                const current = parseInt(e.currentTarget.value) || 0;
+                                updateCustomSlabCalc(slab.id, range.key, (current - 5).toString());
+                              }
+                            }}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="+0"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => autoFillCustomSlab(slab.id)}
+                      className="w-full px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    >
+                      Auto Fill {slab.name}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Create Custom Slab Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Create Custom Slab</h3>
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Slab Name</label>
+                    <input
+                      type="text"
+                      value={newSlabName}
+                      onChange={(e) => setNewSlabName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g., Premium Drilling, Special Rates"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Starting Rate (₹/ft)</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        value={newSlabStartRate}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            setNewSlabStartRate(0);
+                          } else {
+                            setNewSlabStartRate(parseInt(value) || 0);
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                        placeholder="Enter starting rate"
+                        min="0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newSlabRanges.length > 0) {
+                            // Use the first range's calculated rate as starting rate
+                            const firstIncrement = newSlabIncrementPattern[0] || 0;
+                            setNewSlabStartRate(75 + firstIncrement);
+                          }
+                        }}
+                        className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        title="Use first range rate as starting rate"
+                      >
+                        Use First Rate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewSlabStartRate(0)}
+                        className="px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                        title="Clear starting rate"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This will be the base rate for the first range. Other ranges will add their increments to this.
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Feet Ranges</label>
+                      <button
+                        onClick={addRange}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Add Range
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {newSlabRanges.map((range, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                          <input
+                            type="number"
+                            value={range.start}
+                            onChange={(e) => updateRange(index, 'start', parseInt(e.target.value) || 1)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                            placeholder="Start"
+                          />
+                          <span className="text-gray-500">to</span>
+                          <input
+                            type="number"
+                            value={range.end}
+                            onChange={(e) => updateRange(index, 'end', parseInt(e.target.value) || 100)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                            placeholder="End"
+                          />
+                          <span className="text-sm text-gray-600 flex-1">{range.label}</span>
+                          <button
+                            onClick={() => removeRange(index)}
+                            className="p-1 text-red-600 hover:text-red-800"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Increment Pattern</label>
+                      <button
+                        onClick={addIncrement}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Add Increment
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {newSlabIncrementPattern.map((increment, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                          <span className="text-sm text-gray-600 w-20">Range {index + 1}:</span>
+                          <input
+                            type="number"
+                            value={increment}
+                            onChange={(e) => updateIncrement(index, parseInt(e.target.value) || 0)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                            placeholder="+0"
+                          />
+                          <button
+                            onClick={() => removeIncrement(index)}
+                            className="p-1 text-red-600 hover:text-red-800"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rate Preview */}
+                  {newSlabRanges.length > 0 && newSlabIncrementPattern.length > 0 && (
+                    <div className="bg-gray-50 p-4 rounded-md">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">Rate Preview</h4>
+                      <div className="space-y-2">
+                        {newSlabRanges.map((range, index) => {
+                          const increment = newSlabIncrementPattern[index] || 0;
+                          const calculatedRate = newSlabStartRate + increment;
+                          return (
+                            <div key={index} className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">{range.label}:</span>
+                              <span className="font-medium text-gray-900">
+                                ₹{calculatedRate}/ft 
+                                <span className="text-gray-500 ml-1">
+                                  ({newSlabStartRate} + {increment})
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex justify-between items-center text-sm font-medium">
+                          <span className="text-gray-700">Total Ranges:</span>
+                          <span className="text-green-600">{newSlabRanges.length}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createCustomSlab}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    Create Slab
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bottom Actions */}
         <div className="mt-8 flex justify-center">

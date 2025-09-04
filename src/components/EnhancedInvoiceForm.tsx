@@ -6,11 +6,29 @@ import {
 } from '@heroicons/react/24/outline';
 import { Customer } from '../types';
 import { customerService } from '../services/borewellService';
+import { serviceTypeService } from '../services/serviceTypeService';
 import toast from 'react-hot-toast';
 
 interface EnhancedInvoiceFormProps {
   onClose: () => void;
   onSave: (invoiceData: any) => void;
+}
+
+interface SlabRange {
+  start: number;
+  end: number;
+  label: string;
+  key: string;
+}
+
+interface CustomSlab {
+  id: string;
+  name: string;
+  ranges: SlabRange[];
+  rates: { [key: string]: number };
+  calcValues: { [key: string]: string };
+  startRate: number;
+  incrementPattern: number[];
 }
 
 interface SlabRateConfig {
@@ -74,7 +92,14 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [slabRateConfig, setSlabRateConfig] = useState<SlabRateConfig | null>(null);
+  const [customSlabs, setCustomSlabs] = useState<CustomSlab[]>([]);
+  const [slabNames, setSlabNames] = useState({
+    type1: 'Slab #1',
+    type2: 'Slab #2', 
+    type3: 'Slab #3'
+  });
   const [calculatedRates, setCalculatedRates] = useState<any>(null);
+  const [serviceTypes, setServiceTypes] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -108,6 +133,7 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
   useEffect(() => {
     loadCustomers();
     loadSlabRateConfig();
+    loadServiceTypes();
   }, []);
 
   const loadCustomers = () => {
@@ -126,8 +152,31 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
         const parsed = JSON.parse(savedConfig);
         setSlabRateConfig(parsed);
       }
+      
+      // Load custom slab names
+      const savedNames = localStorage.getItem('anjaneya_slab_names');
+      if (savedNames) {
+        const parsedNames = JSON.parse(savedNames);
+        setSlabNames(parsedNames);
+      }
+
+      // Load custom slabs
+      const savedCustomSlabs = localStorage.getItem('anjaneya_custom_slabs');
+      if (savedCustomSlabs) {
+        const parsedCustomSlabs = JSON.parse(savedCustomSlabs);
+        setCustomSlabs(parsedCustomSlabs);
+      }
     } catch (error) {
       console.error('Error loading slab rate config:', error);
+    }
+  };
+
+  const loadServiceTypes = () => {
+    try {
+      const allServiceTypes = serviceTypeService.getAllServiceTypes();
+      setServiceTypes(allServiceTypes);
+    } catch (error) {
+      console.error('Error loading service types:', error);
     }
   };
 
@@ -250,8 +299,18 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
   const calculateRates = useCallback(() => {
     if (!slabRateConfig || formData.totalDepth <= 0) return;
 
-    const typeKey = `type${formData.slabRateType}` as keyof SlabRateConfig;
-    const rates = generateDefaultRates(formData.startingRate, typeKey);
+    let rates: { [key: string]: number };
+    
+    // Check if it's a custom slab
+    const customSlab = customSlabs.find(slab => slab.id === formData.slabRateType);
+    if (customSlab) {
+      // Use custom slab rates
+      rates = customSlab.rates;
+    } else {
+      // Use standard slab rates
+      const typeKey = `type${formData.slabRateType}` as keyof SlabRateConfig;
+      rates = generateDefaultRates(formData.startingRate, typeKey);
+    }
     
     const slabCost = calculateSlabRateByRanges(formData.totalDepth, rates);
     const pvc7Cost = formData.pvc7Inch * formData.pvc7InchRate;
@@ -270,7 +329,7 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
       total,
       rates
     });
-  }, [slabRateConfig, formData.totalDepth, formData.slabRateType, formData.startingRate, formData.pvc7Inch, formData.pvc10Inch, formData.pvc7InchRate, formData.pvc10InchRate, formData.bata, formData.enableTax, formData.taxRate, calculateSlabRateByRanges]);
+  }, [slabRateConfig, formData.totalDepth, formData.slabRateType, formData.startingRate, formData.pvc7Inch, formData.pvc10Inch, formData.pvc7InchRate, formData.pvc10InchRate, formData.bata, formData.enableTax, formData.taxRate, calculateSlabRateByRanges, customSlabs]);
 
   useEffect(() => {
     calculateRates();
@@ -389,10 +448,9 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
-                      <option value="Bore Drilling">Bore Drilling</option>
-                      <option value="Repair">Repair</option>
-                      <option value="Flushing">Flushing</option>
-                      <option value="Earth Purpose">Earth Purpose</option>
+                      {serviceTypes.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -441,9 +499,14 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
-                      <option value="1">Type 1: Standard (1-300, 301-400, 401-500...)</option>
-                      <option value="2">Type 2: Enhanced (1-100, 101-200, 201-300...)</option>
-                      <option value="3">Type 3: Manual Configuration</option>
+                      <option value="1">{slabNames.type1}: Standard (1-300, 301-400, 401-500...)</option>
+                      <option value="2">{slabNames.type2}: Enhanced (1-100, 101-200, 201-300...)</option>
+                      <option value="3">{slabNames.type3}: Manual Configuration</option>
+                      {customSlabs.map((slab) => (
+                        <option key={slab.id} value={slab.id}>
+                          {slab.name}: Custom ({slab.ranges.length} ranges)
+                        </option>
+                      ))}
                     </select>
                   </div>
 

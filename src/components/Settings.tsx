@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Cog6ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, InformationCircleIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
+import { serviceTypeService } from '../services/serviceTypeService';
 
 interface SettingsData {
   company: {
@@ -12,6 +13,10 @@ interface SettingsData {
     currency: string;
     dateFormat: string;
     autoSave: boolean;
+  };
+  serviceTypes: {
+    predefined: string[];
+    custom: string[];
   };
 }
 
@@ -26,10 +31,16 @@ const Settings: React.FC = () => {
       currency: 'INR',
       dateFormat: 'DD/MM/YYYY',
       autoSave: true
+    },
+    serviceTypes: {
+      predefined: ['Bore Drilling', 'Repair', 'Flushing', 'Earth Purpose'],
+      custom: []
     }
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [newServiceType, setNewServiceType] = useState('');
+  const [showAddServiceType, setShowAddServiceType] = useState(false);
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -42,6 +53,13 @@ const Settings: React.FC = () => {
         console.error('Error loading settings:', error);
       }
     }
+    
+    // Load service types
+    const serviceTypeConfig = serviceTypeService.getServiceTypeConfig();
+    setSettings(prev => ({
+      ...prev,
+      serviceTypes: serviceTypeConfig
+    }));
   }, []);
 
   // Handle input changes
@@ -69,6 +87,46 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Add new service type
+  const handleAddServiceType = () => {
+    if (!newServiceType.trim()) {
+      toast.error('Please enter a service type name');
+      return;
+    }
+    
+    const success = serviceTypeService.addCustomServiceType(newServiceType);
+    if (success) {
+      // Update local state
+      const updatedConfig = serviceTypeService.getServiceTypeConfig();
+      setSettings(prev => ({
+        ...prev,
+        serviceTypes: updatedConfig
+      }));
+      
+      setNewServiceType('');
+      setShowAddServiceType(false);
+      toast.success(`Service type "${newServiceType.trim()}" added successfully`);
+    } else {
+      toast.error('Service type already exists');
+    }
+  };
+
+  // Remove custom service type
+  const handleRemoveServiceType = (serviceType: string) => {
+    const success = serviceTypeService.removeCustomServiceType(serviceType);
+    if (success) {
+      // Update local state
+      const updatedConfig = serviceTypeService.getServiceTypeConfig();
+      setSettings(prev => ({
+        ...prev,
+        serviceTypes: updatedConfig
+      }));
+      toast.success(`Service type "${serviceType}" removed successfully`);
+    } else {
+      toast.error('Failed to remove service type');
+    }
+  };
+
   // Reset to defaults
   const handleReset = () => {
     const defaultSettings: SettingsData = {
@@ -81,9 +139,17 @@ const Settings: React.FC = () => {
         currency: 'INR',
         dateFormat: 'DD/MM/YYYY',
         autoSave: true
+      },
+      serviceTypes: {
+        predefined: ['Bore Drilling', 'Repair', 'Flushing', 'Earth Purpose'],
+        custom: []
       }
     };
     setSettings(defaultSettings);
+    
+    // Reset service types
+    serviceTypeService.resetToDefaults();
+    
     toast.success('Settings reset to defaults');
   };
 
@@ -212,6 +278,109 @@ const Settings: React.FC = () => {
                     }`}></span>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Service Type Management */}
+            <div>
+              <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                <Cog6ToothIcon className="h-5 w-5 mr-2" />
+                Service Type Management
+              </h3>
+              <div className="mt-4 space-y-4">
+                {/* Predefined Service Types */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Predefined Service Types</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {settings.serviceTypes.predefined.map((type, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
+                        <span className="text-sm text-gray-700">{type}</span>
+                        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">System</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Service Types */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Custom Service Types</label>
+                    <button
+                      onClick={() => setShowAddServiceType(true)}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <PlusIcon className="h-4 w-4 mr-1" />
+                      Add Service Type
+                    </button>
+                  </div>
+                  
+                  {settings.serviceTypes.custom.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {settings.serviceTypes.custom.map((type, index) => (
+                        <div key={index} className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-md">
+                          <span className="text-sm text-gray-700">{type}</span>
+                          <button
+                            onClick={() => handleRemoveServiceType(type)}
+                            className="text-red-600 hover:text-red-800 focus:outline-none"
+                            title="Remove service type"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No custom service types added yet</p>
+                  )}
+                </div>
+
+                {/* Add Service Type Form */}
+                {showAddServiceType && (
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-900">Add New Service Type</h4>
+                      <button
+                        onClick={() => {
+                          setShowAddServiceType(false);
+                          setNewServiceType('');
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newServiceType}
+                        onChange={(e) => setNewServiceType(e.target.value)}
+                        placeholder="Enter service type name"
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddServiceType();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleAddServiceType}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAddServiceType(false);
+                          setNewServiceType('');
+                        }}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
