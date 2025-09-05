@@ -1004,11 +1004,11 @@ const InvoiceManagement: React.FC = () => {
       const marginX = 15;
       let y = 20;
 
-      // Modern gradient color scheme
+      // Modern gradient color scheme - Teal to Green
       const primaryColor = { r: 13, g: 110, b: 139 }; // Deep ocean blue
-      const accentColor = { r: 17, g: 94, b: 89 }; // Deep teal
-      const gradientStart = { r: 41, g: 128, b: 185 }; // Bright blue
-      const gradientEnd = { r: 109, g: 213, b: 250 }; // Light blue
+      const accentColor = { r: 255, g: 193, b: 7 }; // Golden yellow accent
+      const gradientStart = { r: 20, g: 184, b: 166 }; // Modern teal
+      const gradientEnd = { r: 5, g: 150, b: 105 }; // Forest green
       const lightTeal = { r: 208, g: 236, b: 231 }; // Light teal background
       const darkGray = { r: 45, g: 55, b: 72 }; // Dark gray text
 
