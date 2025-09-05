@@ -1049,28 +1049,14 @@ const InvoiceManagement: React.FC = () => {
         doc.text(companyTagline, marginX, 35);
       }
 
-      // Modern invoice info box (top right)
-      const infoBoxX = pageWidth - 70;
-      const infoBoxY = 10;
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(infoBoxX, infoBoxY, 55, 35, 3, 3, 'FD');
-      
-      // Invoice details in the box
-      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('INVOICE', infoBoxX + 3, infoBoxY + 8);
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(`# ${invoice.invoiceNumber || 'INV-001'}`, infoBoxX + 3, infoBoxY + 16);
-      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, infoBoxX + 3, infoBoxY + 23);
+      // Invoice info moved to BILL TO section
 
       y = headerHeight + 15;
 
-      // Modern client section
+      // Modern client section with invoice info on the right
+      const billToStartY = y;
+      
+      // BILL TO section (left side)
       doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
@@ -1098,6 +1084,28 @@ const InvoiceManagement: React.FC = () => {
         doc.text(addressLines, marginX, y);
         y += addressLines.length * 5;
       }
+      
+      // Invoice information (right side)
+      const invoiceInfoX = pageWidth - marginX - 70;
+      let invoiceY = billToStartY;
+      
+      // Invoice info box background
+      doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(invoiceInfoX, invoiceY, 65, 40, 3, 3, 'FD');
+      
+      // Invoice details
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('INVOICE', invoiceInfoX + 5, invoiceY + 10);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.text(`# ${invoice.invoiceNumber || 'INV-001'}`, invoiceInfoX + 5, invoiceY + 20);
+      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, invoiceInfoX + 5, invoiceY + 30);
 
       y += 10;
 
