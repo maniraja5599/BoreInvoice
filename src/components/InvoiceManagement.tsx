@@ -1029,7 +1029,7 @@ const InvoiceManagement: React.FC = () => {
       } catch {}
 
       // Modern gradient header background
-      const headerHeight = 55;
+      const headerHeight = 40;
       doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.rect(0, 0, pageWidth, headerHeight, 'F');
       
@@ -1041,12 +1041,12 @@ const InvoiceManagement: React.FC = () => {
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text(companyName || 'AquaFlow Solutions', marginX, 25);
+      doc.text(companyName || 'AquaFlow Solutions', marginX, 18);
       
       if (companyTagline) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
-        doc.text(companyTagline, marginX, 35);
+        doc.text(companyTagline, marginX, 28);
       }
 
       // Invoice info moved to BILL TO section
