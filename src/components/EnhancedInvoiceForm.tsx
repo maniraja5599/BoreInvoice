@@ -7,6 +7,7 @@ import {
 import { Customer } from '../types';
 import { customerService } from '../services/borewellService';
 import { serviceTypeService } from '../services/serviceTypeService';
+import { invoiceNumberService } from '../services/invoiceNumberService';
 import toast from 'react-hot-toast';
 
 interface EnhancedInvoiceFormProps {
@@ -228,73 +229,100 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
     return rates;
   };
 
-  const calculateSlabRateByRanges = useCallback((depth: number, rates: any) => {
+  // Enhanced slab rate calculation with detailed breakdown
+  const calculateSlabRateWithBreakdown = useCallback((depth: number, rates: any) => {
     let totalCost = 0;
     let remainingDepth = depth;
+    const breakdown = [];
     
-    const ranges = [
-      { key: 'rate1_300', from: 0, to: 300 },
-      { key: 'rate301_400', from: 301, to: 400 },
-      { key: 'rate401_500', from: 401, to: 500 },
-      { key: 'rate501_600', from: 501, to: 600 },
-      { key: 'rate601_700', from: 601, to: 700 },
-      { key: 'rate701_800', from: 701, to: 800 },
-      { key: 'rate801_900', from: 801, to: 900 },
-      { key: 'rate901_1000', from: 901, to: 1000 },
-      { key: 'rate1001_1100', from: 1001, to: 1100 },
-      { key: 'rate1101_1200', from: 1101, to: 1200 },
-      { key: 'rate1201_1300', from: 1201, to: 1300 },
-      { key: 'rate1301_1400', from: 1301, to: 1400 },
-      { key: 'rate1401_1500', from: 1401, to: 1500 },
-      { key: 'rate1501_1600', from: 1501, to: 1600 },
-      { key: 'rate1600_plus', from: 1601, to: 9999 }
-    ];
-
-    // For type2, use different ranges
-    if (formData.slabRateType === '2') {
-      const type2Ranges = [
-        { key: 'rate1_100', from: 1, to: 100 },
-        { key: 'rate101_200', from: 101, to: 200 },
-        { key: 'rate201_300', from: 201, to: 300 },
-        { key: 'rate301_400', from: 301, to: 400 },
-        { key: 'rate401_500', from: 401, to: 500 },
-        { key: 'rate501_600', from: 501, to: 600 },
-        { key: 'rate601_700', from: 601, to: 700 },
-        { key: 'rate701_800', from: 701, to: 800 },
-        { key: 'rate801_900', from: 801, to: 900 },
-        { key: 'rate901_1000', from: 901, to: 1000 },
-        { key: 'rate1001_1100', from: 1001, to: 1100 },
-        { key: 'rate1101_1200', from: 1101, to: 1200 },
-        { key: 'rate1201_1300', from: 1201, to: 1300 },
-        { key: 'rate1301_1400', from: 1301, to: 1400 },
-        { key: 'rate1401_1500', from: 1401, to: 1500 },
-        { key: 'rate1501_1600', from: 1501, to: 1600 },
-        { key: 'rate1600_plus', from: 1601, to: 9999 }
-      ];
-      
-      for (const range of type2Ranges) {
-        if (remainingDepth <= 0) break;
-        
-        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
-        if (applicableDepth > 0) {
-          totalCost += applicableDepth * (rates[range.key] || 0);
-          remainingDepth -= applicableDepth;
-        }
-      }
+    // Check if it's a custom slab to use custom ranges
+    const customSlab = customSlabs.find(slab => slab.id === formData.slabRateType);
+    let ranges;
+    
+    if (customSlab) {
+      // Use custom slab ranges
+      ranges = customSlab.ranges.map(range => ({
+        key: range.key,
+        from: range.start,
+        to: range.end,
+        label: range.label
+      }));
     } else {
-      for (const range of ranges) {
-        if (remainingDepth <= 0) break;
+      // Use default ranges
+      ranges = [
+        { key: 'rate1_300', from: 1, to: 300, label: '1-300 feet' },
+        { key: 'rate301_400', from: 301, to: 400, label: '301-400 feet' },
+        { key: 'rate401_500', from: 401, to: 500, label: '401-500 feet' },
+        { key: 'rate501_600', from: 501, to: 600, label: '501-600 feet' },
+        { key: 'rate601_700', from: 601, to: 700, label: '601-700 feet' },
+        { key: 'rate701_800', from: 701, to: 800, label: '701-800 feet' },
+        { key: 'rate801_900', from: 801, to: 900, label: '801-900 feet' },
+        { key: 'rate901_1000', from: 901, to: 1000, label: '901-1000 feet' },
+        { key: 'rate1001_1100', from: 1001, to: 1100, label: '1001-1100 feet' },
+        { key: 'rate1101_1200', from: 1101, to: 1200, label: '1101-1200 feet' },
+        { key: 'rate1201_1300', from: 1201, to: 1300, label: '1201-1300 feet' },
+        { key: 'rate1301_1400', from: 1301, to: 1400, label: '1301-1400 feet' },
+        { key: 'rate1401_1500', from: 1401, to: 1500, label: '1401-1500 feet' },
+        { key: 'rate1501_1600', from: 1501, to: 1600, label: '1501-1600 feet' },
+        { key: 'rate1600_plus', from: 1601, to: 9999, label: '1600+ feet' }
+      ];
+    }
+
+    // Handle type2 differently if it's not a custom slab
+    if (!customSlab && formData.slabRateType === '2') {
+      ranges = [
+        { key: 'rate1_100', from: 1, to: 100, label: '1-100 feet' },
+        { key: 'rate101_200', from: 101, to: 200, label: '101-200 feet' },
+        { key: 'rate201_300', from: 201, to: 300, label: '201-300 feet' },
+        { key: 'rate301_400', from: 301, to: 400, label: '301-400 feet' },
+        { key: 'rate401_500', from: 401, to: 500, label: '401-500 feet' },
+        { key: 'rate501_600', from: 501, to: 600, label: '501-600 feet' },
+        { key: 'rate601_700', from: 601, to: 700, label: '601-700 feet' },
+        { key: 'rate701_800', from: 701, to: 800, label: '701-800 feet' },
+        { key: 'rate801_900', from: 801, to: 900, label: '801-900 feet' },
+        { key: 'rate901_1000', from: 901, to: 1000, label: '901-1000 feet' },
+        { key: 'rate1001_1100', from: 1001, to: 1100, label: '1001-1100 feet' },
+        { key: 'rate1101_1200', from: 1101, to: 1200, label: '1101-1200 feet' },
+        { key: 'rate1201_1300', from: 1201, to: 1300, label: '1201-1300 feet' },
+        { key: 'rate1301_1400', from: 1301, to: 1400, label: '1301-1400 feet' },
+        { key: 'rate1401_1500', from: 1401, to: 1500, label: '1401-1500 feet' },
+        { key: 'rate1501_1600', from: 1501, to: 1600, label: '1501-1600 feet' },
+        { key: 'rate1600_plus', from: 1601, to: 9999, label: '1600+ feet' }
+      ];
+    }
+
+    // Calculate breakdown using the determined ranges
+    for (const range of ranges) {
+      if (remainingDepth <= 0) break;
+      
+      if (depth >= range.from) {
+        const rangeStart = Math.max(1, range.from);
+        const rangeEnd = Math.min(depth, range.to);
+        const applicableDepth = rangeEnd - rangeStart + 1;
         
-        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
         if (applicableDepth > 0) {
-          totalCost += applicableDepth * (rates[range.key] || 0);
-          remainingDepth -= applicableDepth;
+          const rate = rates[range.key] || 0;
+          const cost = applicableDepth * rate;
+          totalCost += cost;
+          
+          breakdown.push({
+            range: range.label,
+            depth: applicableDepth,
+            rate: rate,
+            cost: cost,
+            calculation: `${applicableDepth} ft × ₹${rate}/ft = ₹${cost.toLocaleString('en-IN')}`
+          });
         }
       }
     }
     
-    return totalCost;
-  }, [formData.slabRateType]);
+    return { totalCost, breakdown };
+  }, [formData.slabRateType, customSlabs]);
+
+  const calculateSlabRateByRanges = useCallback((depth: number, rates: any) => {
+    const result = calculateSlabRateWithBreakdown(depth, rates);
+    return result.totalCost;
+  }, [calculateSlabRateWithBreakdown]);
 
   const calculateRates = useCallback(() => {
     if (!slabRateConfig || formData.totalDepth <= 0) return;
@@ -312,7 +340,11 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
       rates = generateDefaultRates(formData.startingRate, typeKey);
     }
     
-    const slabCost = calculateSlabRateByRanges(formData.totalDepth, rates);
+    // Get detailed breakdown
+    const slabResult = calculateSlabRateWithBreakdown(formData.totalDepth, rates);
+    const slabCost = slabResult.totalCost;
+    const slabBreakdown = slabResult.breakdown;
+    
     const pvc7Cost = formData.pvc7Inch * formData.pvc7InchRate;
     const pvc10Cost = formData.pvc10Inch * formData.pvc10InchRate;
     const subtotal = slabCost + pvc7Cost + pvc10Cost + formData.bata;
@@ -327,9 +359,10 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
       subtotal,
       taxAmount,
       total,
-      rates
+      rates,
+      slabBreakdown
     });
-  }, [slabRateConfig, formData.totalDepth, formData.slabRateType, formData.startingRate, formData.pvc7Inch, formData.pvc10Inch, formData.pvc7InchRate, formData.pvc10InchRate, formData.bata, formData.enableTax, formData.taxRate, calculateSlabRateByRanges, customSlabs]);
+  }, [slabRateConfig, formData.totalDepth, formData.slabRateType, formData.startingRate, formData.pvc7Inch, formData.pvc10Inch, formData.pvc7InchRate, formData.pvc10InchRate, formData.bata, formData.enableTax, formData.taxRate, calculateSlabRateWithBreakdown, customSlabs]);
 
   useEffect(() => {
     calculateRates();
@@ -373,7 +406,7 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
       ...formData,
       customer: selectedCustomer,
       calculatedRates,
-      invoiceNumber: `INV-${Date.now()}`,
+      invoiceNumber: invoiceNumberService.generateInvoiceNumber(),
       createdAt: new Date(),
       status: 'draft'
     };
@@ -621,6 +654,29 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                     <CalculatorIcon className="h-5 w-5 mr-2" />
                     Calculation Results
                   </h4>
+                  {/* Detailed Slab Rate Breakdown */}
+                  {calculatedRates.slabBreakdown && calculatedRates.slabBreakdown.length > 0 && (
+                    <div className="mb-4 p-3 bg-white rounded border border-blue-200">
+                      <h5 className="text-sm font-semibold text-blue-900 mb-2">
+                        Slab Rate Breakdown for {formData.totalDepth} feet:
+                      </h5>
+                      <div className="space-y-1 text-xs">
+                        {calculatedRates.slabBreakdown.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0">
+                            <span className="text-gray-700">{item.range}:</span>
+                            <span className="font-medium text-blue-800">{item.calculation}</span>
+                          </div>
+                        ))}
+                        <div className="pt-2 border-t border-blue-200 font-semibold">
+                          <div className="flex justify-between items-center">
+                            <span className="text-blue-900">Total Slab Cost:</span>
+                            <span className="text-blue-900">₹{calculatedRates.slabCost.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Slab Cost:</span>

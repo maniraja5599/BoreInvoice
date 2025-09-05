@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Cog6ToothIcon, InformationCircleIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, InformationCircleIcon, PlusIcon, TrashIcon, XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { serviceTypeService } from '../services/serviceTypeService';
+import { invoiceNumberService } from '../services/invoiceNumberService';
 
 interface SettingsData {
   company: {
@@ -381,6 +382,84 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Invoice Number Management */}
+            <div>
+              <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                <DocumentTextIcon className="h-5 w-5 mr-2" />
+                Invoice Number Management
+              </h3>
+              <div className="mt-4 space-y-4">
+                <div className="bg-blue-50 p-4 rounded-md">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Current Invoice Format</h4>
+                  <p className="text-sm text-blue-700">
+                    Format: <span className="font-mono bg-blue-100 px-2 py-1 rounded">YYMM-XXX</span>
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Example: <span className="font-mono">2501-001</span> (January 2025, Invoice #1)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Current Month</h4>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {invoiceNumberService.getCurrentMonthCount()}
+                    </p>
+                    <p className="text-xs text-gray-500">invoices generated this month</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Next Invoice Number</h4>
+                    <p className="text-lg font-mono text-gray-900">
+                      {invoiceNumberService.generateInvoiceNumber()}
+                    </p>
+                    <p className="text-xs text-gray-500">preview of next number</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Monthly Invoice Counts</h4>
+                  <div className="max-h-40 overflow-y-auto">
+                    {invoiceNumberService.getAllMonthCounts().length > 0 ? (
+                      <div className="space-y-1">
+                        {invoiceNumberService.getAllMonthCounts().map((month) => (
+                          <div key={month.month} className="flex justify-between items-center text-sm bg-gray-50 px-3 py-2 rounded">
+                            <span className="text-gray-700">{month.display}</span>
+                            <span className="font-medium text-gray-900">{month.count} invoices</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No invoices generated yet</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      const nextNumber = invoiceNumberService.generateInvoiceNumber();
+                      toast.success(`Next invoice number: ${nextNumber}`);
+                    }}
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Preview Next Number
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to reset all invoice counters? This action cannot be undone.')) {
+                        invoiceNumberService.resetCounters();
+                        toast.success('Invoice counters reset successfully');
+                      }
+                    }}
+                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Reset Counters
+                  </button>
+                </div>
               </div>
             </div>
 

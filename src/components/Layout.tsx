@@ -9,7 +9,8 @@ import {
   DocumentTextIcon,
   Cog6ToothIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  BeakerIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -42,10 +43,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl">
           <div className="flex h-16 items-center justify-between px-4">
             <div className="flex items-center">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
+              <div className="h-9 w-9 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <BeakerIcon className="text-white h-5 w-5" />
               </div>
-              <span className="ml-2 text-lg font-semibold text-gray-900">Anjaneya Borewells</span>
+              <span className="ml-3 text-lg font-semibold text-gray-900">Anjaneya Borewells</span>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -59,16 +60,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                   isActive(item.href)
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-r-2 border-blue-500 shadow-sm'
+                    : 'text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:text-blue-700 hover:shadow-sm'
                 }`}
                 onClick={() => setSidebarOpen(false)}
               >
                 <item.icon
-                  className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActive(item.href) ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                  className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200 ${
+                    isActive(item.href) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'
                   }`}
                 />
                 {item.name}
@@ -82,25 +83,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white shadow-xl">
           <div className="flex h-16 items-center px-4">
-            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+            <div className="h-10 w-10 bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <BeakerIcon className="text-white h-6 w-6" />
             </div>
-            <span className="ml-2 text-lg font-semibold text-gray-900">Anjaneya Borewells</span>
+            <span className="ml-3 text-lg font-semibold text-gray-900">Anjaneya Borewells</span>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                   isActive(item.href)
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-r-2 border-blue-500 shadow-sm'
+                    : 'text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:text-blue-700 hover:shadow-sm'
                 }`}
               >
                 <item.icon
-                  className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActive(item.href) ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                  className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200 ${
+                    isActive(item.href) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'
                   }`}
                 />
                 {item.name}

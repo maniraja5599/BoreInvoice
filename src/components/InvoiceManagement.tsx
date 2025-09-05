@@ -482,12 +482,12 @@ const InvoiceManagement: React.FC = () => {
       // Create invoice items from the calculated rates
       const items: InvoiceItem[] = [];
       
-      // Add drilling service item
+      // Add drilling service as single consolidated item (no slab rate details in PDF)
       if (invoiceData.calculatedRates.slabCost > 0) {
         items.push({
           id: `item_${Date.now()}_1`,
           type: 'service',
-          description: `${invoiceData.serviceType} - ${invoiceData.totalDepth} feet (Slab Type ${invoiceData.slabRateType})`,
+          description: `${invoiceData.serviceType} - ${invoiceData.totalDepth} feet`,
           quantity: invoiceData.totalDepth,
           unit: 'feet',
           rate: invoiceData.calculatedRates.slabCost / invoiceData.totalDepth,

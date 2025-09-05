@@ -77,7 +77,7 @@ interface SlabRateConfig {
   };
 }
 
-const SlabRateConfiguration: React.FC = () => {
+const SlabRateConfigurationSimple: React.FC = () => {
   const navigate = useNavigate();
   
   // Slab names state
@@ -87,8 +87,13 @@ const SlabRateConfiguration: React.FC = () => {
     type3: 'Slab #3'
   });
 
-  // Custom slabs state (simplified)
+  // Custom slabs state
   const [customSlabs, setCustomSlabs] = useState<CustomSlab[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newSlabName, setNewSlabName] = useState('');
+  const [newSlabRanges, setNewSlabRanges] = useState<SlabRange[]>([]);
+  const [newSlabStartRate, setNewSlabStartRate] = useState(75);
+  const [newSlabIncrementPattern, setNewSlabIncrementPattern] = useState<number[]>([]);
 
   // Generate default rates
   const generateDefaultRates = (startRate: number = 75, type: 'type1' | 'type2' | 'type3' = 'type1') => {
@@ -209,26 +214,8 @@ const SlabRateConfiguration: React.FC = () => {
     toast.success(`${slabNames[slabType]} reset to default values`);
   };
 
-  const deleteSlab = (slabType: 'type1' | 'type2' | 'type3') => {
-    if (window.confirm(`Are you sure you want to delete ${slabNames[slabType]}? This action cannot be undone.`)) {
-      const defaultRates = generateDefaultRates(75, slabType) as any;
-      
-      setSlabRateConfig({
-        ...slabRateConfig,
-        [slabType]: defaultRates
-      });
-
-      setSlabNames({
-        ...slabNames,
-        [slabType]: `Slab #${slabType === 'type1' ? '1' : slabType === 'type2' ? '2' : '3'}`
-      });
-
-      toast.success(`${slabNames[slabType]} has been reset to defaults!`);
-    }
-  };
-
   // Helper function to render rate input fields
-  const renderRateInputs = (type: 'type1' | 'type2' | 'type3', excludeFields: string[] = []) => {
+  const renderRateInputs = (type: 'type1' | 'type2' | 'type3') => {
     let rateFields: { key: string; label: string; startRate: number; calc: string }[] = [];
     
     if (type === 'type2') {
@@ -281,8 +268,6 @@ const SlabRateConfiguration: React.FC = () => {
       
       if (type === 'type2') {
         baseRate = slabRateConfig[type].rate1_100 || 75;
-      } else if (type === 'type3') {
-        baseRate = slabRateConfig[type].rate1_300 || 75;
       } else {
         baseRate = slabRateConfig[type].rate1_300 || 75;
       }
@@ -305,129 +290,68 @@ const SlabRateConfiguration: React.FC = () => {
     };
 
     return (
-      <div>
+      <div className="space-y-4">
         {/* Auto-fill button */}
         <div className="mb-4 flex justify-center">
           <button
             onClick={handleAutoFill}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded border hover:bg-blue-700"
-            style={{ backgroundColor: '#2563eb', color: 'white' }}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
           >
-            Auto Fill Based on First Rate
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Auto Fill Based on First Rate</span>
           </button>
         </div>
-        <p className="text-xs text-gray-500 mb-4 text-center">
+
+        <div className="text-xs text-gray-600 mb-4 text-center">
           {type === 'type2' ? 
             'Enter rate for 1-100 feet, then click Auto Fill to calculate all other rates' : 
             'Enter rate for 1-300 feet, then click Auto Fill to calculate all other rates'
           }
-        </p>
+        </div>
 
         {/* Rate input fields */}
-        <div className="space-y-3">
-          {rateFields
-            .filter(field => !excludeFields.includes(field.key))
-            .map((field, index) => (
-              <div key={field.key} className="flex items-center space-x-3 p-3 bg-gray-50 rounded border">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {field.label}
-                  </label>
-                  <input
-                    type="number"
-                    value={(slabRateConfig[type] as any)[field.key] || field.startRate}
-                    onChange={(e) => setSlabRateConfig({
-                      ...slabRateConfig,
-                      [type]: {
-                        ...slabRateConfig[type],
-                        [field.key]: parseFloat(e.target.value) || field.startRate
-                      } as any
-                    })}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
-                    placeholder={field.startRate.toString()}
-                  />
-                </div>
-                
-                {/* Manual calculation input */}
-                <div className="flex-shrink-0">
-                  <div className="text-xs text-gray-500 mb-1">Calc</div>
-                  <input
-                    type="text"
-                    value={calcValues[type]?.[field.key] || field.calc}
-                    onChange={(e) => {
-                      setCalcValues(prev => ({
-                        ...prev,
-                        [type]: {
-                          ...prev[type],
-                          [field.key]: e.target.value
-                        }
-                      }));
-                    }}
-                    className="w-16 border border-gray-300 rounded px-2 py-1 text-sm font-mono text-gray-700 text-center focus:outline-none focus:border-gray-500"
-                    placeholder="+0"
-                  />
-                </div>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {rateFields.map((field, index) => (
+            <div key={field.key} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  {field.label}
+                </label>
+                <input
+                  type="number"
+                  value={(slabRateConfig[type] as any)[field.key] || field.startRate}
+                  onChange={(e) => setSlabRateConfig({
+                    ...slabRateConfig,
+                    [type]: {
+                      ...slabRateConfig[type],
+                      [field.key]: parseFloat(e.target.value) || field.startRate
+                    } as any
+                  })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={field.startRate.toString()}
+                />
               </div>
-            ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderSystemOverview = (type: 'type1' | 'type2' | 'type3', bgColor: string, textColor: string) => {
-    let ranges: { key: string; label: string }[] = [];
-    
-    if (type === 'type2') {
-      ranges = [
-        { key: 'rate1_100', label: '1-100 ft' },
-        { key: 'rate101_200', label: '101-200 ft' },
-        { key: 'rate201_300', label: '201-300 ft' },
-        { key: 'rate301_400', label: '301-400 ft' },
-        { key: 'rate401_500', label: '401-500 ft' },
-        { key: 'rate501_600', label: '501-600 ft' },
-        { key: 'rate601_700', label: '601-700 ft' },
-        { key: 'rate701_800', label: '701-800 ft' },
-        { key: 'rate801_900', label: '801-900 ft' },
-        { key: 'rate901_1000', label: '901-1000 ft' },
-        { key: 'rate1001_1100', label: '1001-1100 ft' },
-        { key: 'rate1101_1200', label: '1101-1200 ft' },
-        { key: 'rate1201_1300', label: '1201-1300 ft' },
-        { key: 'rate1301_1400', label: '1301-1400 ft' },
-        { key: 'rate1401_1500', label: '1401-1500 ft' },
-        { key: 'rate1501_1600', label: '1501-1600 ft' },
-        { key: 'rate1600_plus', label: '1600+ ft' }
-      ];
-    } else {
-      ranges = [
-        { key: 'rate1_300', label: '1-300 ft' },
-        { key: 'rate301_400', label: '301-400 ft' },
-        { key: 'rate401_500', label: '401-500 ft' },
-        { key: 'rate501_600', label: '501-600 ft' },
-        { key: 'rate601_700', label: '601-700 ft' },
-        { key: 'rate701_800', label: '701-800 ft' },
-        { key: 'rate801_900', label: '801-900 ft' },
-        { key: 'rate901_1000', label: '901-1000 ft' },
-        { key: 'rate1001_1100', label: '1001-1100 ft' },
-        { key: 'rate1101_1200', label: '1101-1200 ft' },
-        { key: 'rate1201_1300', label: '1201-1300 ft' },
-        { key: 'rate1301_1400', label: '1301-1400 ft' },
-        { key: 'rate1401_1500', label: '1401-1500 ft' },
-        { key: 'rate1501_1600', label: '1501-1600 ft' },
-        { key: 'rate1600_plus', label: '1600+ ft' }
-      ];
-      
-      if (type === 'type3') {
-        ranges.push({ key: 'rate1_500', label: '1-500 ft' });
-      }
-    }
-
-    return (
-      <div className={`mt-6 p-4 ${bgColor} rounded border max-h-64 overflow-y-auto`}>
-        <h4 className="text-sm font-medium text-gray-900 mb-2">System Overview</h4>
-        <div className="text-xs text-gray-800 space-y-1">
-          {ranges.map(range => (
-            <div key={range.key}>
-              • {range.label}: ₹{(slabRateConfig[type] as any)[range.key] || 0}/ft
+              
+              <div className="flex-shrink-0">
+                <div className="text-xs text-gray-600 mb-1">Calc</div>
+                <input
+                  type="text"
+                  value={calcValues[type]?.[field.key] || field.calc}
+                  onChange={(e) => {
+                    setCalcValues(prev => ({
+                      ...prev,
+                      [type]: {
+                        ...prev[type],
+                        [field.key]: e.target.value
+                      }
+                    }));
+                  }}
+                  className="w-16 border border-gray-300 rounded px-2 py-1 text-sm font-mono text-gray-900 text-center"
+                  placeholder="+0"
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -436,184 +360,145 @@ const SlabRateConfiguration: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Clean Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-2 text-gray-600 border border-gray-300 rounded"
-              >
-                <ArrowLeftIcon className="h-6 w-6" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Slab Rate Configuration</h1>
-                <p className="text-gray-600 mt-2">Configure pricing for different slab rate systems</p>
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeftIcon className="h-6 w-6" />
+                </button>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Slab Rate Configuration</h1>
+                  <p className="text-gray-600 mt-1">Configure pricing for different slab rate systems</p>
+                </div>
               </div>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={saveConfiguration}
-                className="px-4 py-2 bg-blue-600 border border-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700"
-                style={{ backgroundColor: '#2563eb', color: 'white' }}
-              >
-                Save Configuration
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Create Custom Slab
+                </button>
+                <button
+                  onClick={saveConfiguration}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Save Configuration
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Slab #1: 1-300 feet system */}
-          <div className="bg-white border border-gray-300 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Slab #1 */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                  <span className="text-gray-800 font-bold text-lg">1</span>
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-lg">1</span>
                 </div>
                 <div className="flex-1">
                   <input
                     type="text"
                     value={slabNames.type1}
                     onChange={(e) => setSlabNames({...slabNames, type1: e.target.value})}
-                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-gray-500"
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 px-1"
                     placeholder="Enter slab name"
                   />
-                  <p className="text-sm text-gray-600">Start from 1-300 feet</p>
+                  <p className="text-sm text-gray-600 mt-1">Traditional system: 1-300 feet base</p>
                 </div>
               </div>
-              <button
-                onClick={() => deleteSlab('type1')}
-                className="p-2 text-red-600 border border-red-300 rounded"
-                title="Delete slab configuration"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {renderRateInputs('type1')}
-            </div>
+            {renderRateInputs('type1')}
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <button
                 onClick={() => resetSlabToDefaults('type1')}
-                className="w-full px-3 py-2 text-sm border border-orange-500 bg-orange-500 rounded text-white hover:bg-orange-600"
-                style={{ backgroundColor: '#f97316', color: 'white' }}
-                title={`Reset ${slabNames.type1} to defaults`}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Reset {slabNames.type1} to Defaults
+                Reset to Defaults
               </button>
             </div>
-
-            {renderSystemOverview('type1', 'bg-gray-50', 'text-gray-800')}
           </div>
 
-          {/* Slab #2: 1-500 feet system */}
-          <div className="bg-white border border-gray-300 p-6">
+          {/* Slab #2 */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                  <span className="text-gray-800 font-bold text-lg">2</span>
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 font-bold text-lg">2</span>
                 </div>
                 <div className="flex-1">
                   <input
                     type="text"
                     value={slabNames.type2}
                     onChange={(e) => setSlabNames({...slabNames, type2: e.target.value})}
-                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-gray-500"
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-green-500 px-1"
                     placeholder="Enter slab name"
                   />
-                  <p className="text-sm text-gray-600">Enhanced 100-foot increments: 1-100, 101-200, 201-300... up to 1600+</p>
+                  <p className="text-sm text-gray-600 mt-1">Enhanced: 100-foot increments</p>
                 </div>
               </div>
-              <button
-                onClick={() => deleteSlab('type2')}
-                className="p-2 text-red-600 border border-red-300 rounded"
-                title="Delete slab configuration"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {renderRateInputs('type2')}
-            </div>
+            {renderRateInputs('type2')}
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <button
                 onClick={() => resetSlabToDefaults('type2')}
-                className="w-full px-3 py-2 text-sm border border-orange-500 bg-orange-500 rounded text-white hover:bg-orange-600"
-                style={{ backgroundColor: '#f97316', color: 'white' }}
-                title={`Reset ${slabNames.type2} to defaults`}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Reset {slabNames.type2} to Defaults
+                Reset to Defaults
               </button>
             </div>
-
-            {renderSystemOverview('type2', 'bg-gray-50', 'text-gray-800')}
           </div>
 
-          {/* Slab #3: Manual configuration */}
-          <div className="bg-white border border-gray-300 p-6">
+          {/* Slab #3 */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                  <span className="text-gray-800 font-bold text-lg">3</span>
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-purple-600 font-bold text-lg">3</span>
                 </div>
                 <div className="flex-1">
                   <input
                     type="text"
                     value={slabNames.type3}
                     onChange={(e) => setSlabNames({...slabNames, type3: e.target.value})}
-                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-gray-500"
+                    className="text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:outline-none focus:border-purple-500 px-1"
                     placeholder="Enter slab name"
                   />
-                  <p className="text-sm text-gray-600">Manual configuration</p>
+                  <p className="text-sm text-gray-600 mt-1">Manual configuration</p>
                 </div>
               </div>
-              <button
-                onClick={() => deleteSlab('type3')}
-                className="p-2 text-red-600 border border-red-300 rounded"
-                title="Delete slab configuration"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {renderRateInputs('type3')}
-            </div>
+            {renderRateInputs('type3')}
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <button
                 onClick={() => resetSlabToDefaults('type3')}
-                className="w-full px-3 py-2 text-sm border border-orange-500 bg-orange-500 rounded text-white hover:bg-orange-600"
-                style={{ backgroundColor: '#f97316', color: 'white' }}
-                title={`Reset ${slabNames.type3} to defaults`}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Reset {slabNames.type3} to Defaults
+                Reset to Defaults
               </button>
             </div>
-
-            {renderSystemOverview('type3', 'bg-gray-50', 'text-gray-800')}
           </div>
         </div>
 
-        {/* Bottom Actions */}
+        {/* Bottom Save Button */}
         <div className="mt-8 flex justify-center">
           <button
             onClick={saveConfiguration}
-            className="px-6 py-3 bg-blue-600 border border-blue-600 rounded text-base font-medium text-white hover:bg-blue-700"
-            style={{ backgroundColor: '#2563eb', color: 'white' }}
+            className="px-6 py-3 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700 transition-colors"
           >
             Save Configuration
           </button>
@@ -623,4 +508,4 @@ const SlabRateConfiguration: React.FC = () => {
   );
 };
 
-export default SlabRateConfiguration;
+export default SlabRateConfigurationSimple;
