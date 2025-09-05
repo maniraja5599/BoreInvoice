@@ -1297,69 +1297,9 @@ const InvoiceManagement: React.FC = () => {
       
       afterTableY += 25;
     
-      // Amount in words section
-      const words = numberToWordsIndian(Math.round(invoice.totalAmount || 0));
-      if (words) {
-        const wordsText = `${words} rupees only`.toUpperCase();
-        const wordsLines = doc.splitTextToSize(wordsText, pageWidth - marginX * 2 - 10);
-        
-        // Calculate height needed based on number of lines
-        const lineHeight = 5;
-        const wordsBoxHeight = Math.max(20, wordsLines.length * lineHeight + 10);
-        
-        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
-        doc.roundedRect(marginX, afterTableY, pageWidth - marginX * 2, wordsBoxHeight, 3, 3, 'F');
-        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text('Amount in Words:', marginX + 5, afterTableY + 8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
-        doc.text(wordsLines, marginX + 5, afterTableY + 14);
-        afterTableY += wordsBoxHeight + 5;
-      }
+      // Amount in words section - REMOVED
 
-      // Notes & Terms with modern styling and dynamic height
-      const boxWidth = pageWidth - marginX * 2;
-      const lineHeight = 4;
-      
-      if (invoice.notes) {
-        const noteLines = doc.splitTextToSize(invoice.notes, boxWidth - 10);
-        const notesBoxHeight = Math.max(15, noteLines.length * lineHeight + 12);
-        
-        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
-        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(marginX, afterTableY, boxWidth, notesBoxHeight, 3, 3, 'FD');
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        doc.setFontSize(9);
-        doc.text('NOTES:', marginX + 5, afterTableY + 8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
-        doc.setFontSize(8);
-        doc.text(noteLines, marginX + 5, afterTableY + 13);
-        afterTableY += notesBoxHeight + 5;
-      }
-      
-      if (invoice.terms) {
-        const termLines = doc.splitTextToSize(invoice.terms, boxWidth - 10);
-        const termsBoxHeight = Math.max(15, termLines.length * lineHeight + 12);
-        
-        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
-        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(marginX, afterTableY, boxWidth, termsBoxHeight, 3, 3, 'FD');
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        doc.setFontSize(9);
-        doc.text('TERMS & CONDITIONS:', marginX + 5, afterTableY + 8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
-        doc.setFontSize(8);
-        doc.text(termLines, marginX + 5, afterTableY + 13);
-        afterTableY += termsBoxHeight + 5;
-      }
+      // Notes & Terms sections - REMOVED
 
       // Modern footer with gradient - ensure no overlap with content
       afterTableY += 10; // Add some space before footer
