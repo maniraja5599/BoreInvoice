@@ -1085,27 +1085,21 @@ const InvoiceManagement: React.FC = () => {
         y += addressLines.length * 5;
       }
       
-      // Invoice information (right side)
-      const invoiceInfoX = pageWidth - marginX - 70;
+      // Invoice information (right side) - simple text format
+      const invoiceInfoX = pageWidth - marginX - 10;
       let invoiceY = billToStartY;
       
-      // Invoice info box background
-      doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
-      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(invoiceInfoX, invoiceY, 65, 40, 3, 3, 'FD');
-      
-      // Invoice details
+      // Invoice details as simple text lines
       doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('INVOICE', invoiceInfoX + 5, invoiceY + 10);
+      doc.setFontSize(11);
+      doc.text(`INVOICE: ${invoice.invoiceNumber || 'INV-001'}`, invoiceInfoX, invoiceY, { align: 'right' });
       
+      invoiceY += 8;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
-      doc.text(`# ${invoice.invoiceNumber || 'INV-001'}`, invoiceInfoX + 5, invoiceY + 20);
-      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, invoiceInfoX + 5, invoiceY + 30);
+      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, invoiceInfoX, invoiceY, { align: 'right' });
 
       y += 10;
 
