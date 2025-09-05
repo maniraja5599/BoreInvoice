@@ -1319,56 +1319,82 @@ const InvoiceManagement: React.FC = () => {
         afterTableY += wordsBoxHeight + 5;
       }
 
-      // Notes & Terms with modern styling
+      // Notes & Terms with modern styling and dynamic height
       const boxWidth = pageWidth - marginX * 2;
+      const lineHeight = 4;
+      
       if (invoice.notes) {
+        const noteLines = doc.splitTextToSize(invoice.notes, boxWidth - 10);
+        const notesBoxHeight = Math.max(15, noteLines.length * lineHeight + 12);
+        
         doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
         doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
         doc.setLineWidth(0.3);
-        doc.roundedRect(marginX, afterTableY, boxWidth, 15, 3, 3, 'FD');
+        doc.roundedRect(marginX, afterTableY, boxWidth, notesBoxHeight, 3, 3, 'FD');
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
         doc.setFontSize(9);
-        doc.text('NOTES:', marginX + 5, afterTableY + 6);
+        doc.text('NOTES:', marginX + 5, afterTableY + 8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
         doc.setFontSize(8);
-        const noteLines = doc.splitTextToSize(invoice.notes, boxWidth - 10);
-        doc.text(noteLines, marginX + 5, afterTableY + 11);
-        afterTableY += 20;
+        doc.text(noteLines, marginX + 5, afterTableY + 13);
+        afterTableY += notesBoxHeight + 5;
       }
       
       if (invoice.terms) {
+        const termLines = doc.splitTextToSize(invoice.terms, boxWidth - 10);
+        const termsBoxHeight = Math.max(15, termLines.length * lineHeight + 12);
+        
         doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
         doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
         doc.setLineWidth(0.3);
-        doc.roundedRect(marginX, afterTableY, boxWidth, 15, 3, 3, 'FD');
+        doc.roundedRect(marginX, afterTableY, boxWidth, termsBoxHeight, 3, 3, 'FD');
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
         doc.setFontSize(9);
-        doc.text('TERMS & CONDITIONS:', marginX + 5, afterTableY + 6);
+        doc.text('TERMS & CONDITIONS:', marginX + 5, afterTableY + 8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
         doc.setFontSize(8);
-        const termLines = doc.splitTextToSize(invoice.terms, boxWidth - 10);
-        doc.text(termLines, marginX + 5, afterTableY + 11);
-        afterTableY += 20;
+        doc.text(termLines, marginX + 5, afterTableY + 13);
+        afterTableY += termsBoxHeight + 5;
       }
 
-      // Modern footer with gradient
-      const footerY = pageHeight - 20;
-      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-      doc.rect(0, footerY, pageWidth, 20, 'F');
-      doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-      doc.rect(0, footerY, pageWidth, 3, 'F');
+      // Modern footer with gradient - ensure no overlap with content
+      afterTableY += 10; // Add some space before footer
+      const footerY = Math.max(afterTableY, pageHeight - 30); // Use dynamic position or bottom of page
       
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text(companyName, pageWidth / 2, footerY + 8, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 14, { align: 'center' });
+      // Check if we need a new page
+      if (footerY + 20 > pageHeight - 10) {
+        doc.addPage();
+        const newFooterY = pageHeight - 30;
+        doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        doc.rect(0, newFooterY, pageWidth, 20, 'F');
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(0, newFooterY, pageWidth, 3, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyName, pageWidth / 2, newFooterY + 8, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, newFooterY + 14, { align: 'center' });
+      } else {
+        doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        doc.rect(0, footerY, pageWidth, 20, 'F');
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(0, footerY, pageWidth, 3, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyName, pageWidth / 2, footerY + 8, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 14, { align: 'center' });
+      }
 
       // Reset text color to black before save
       doc.setTextColor(0, 0, 0);
