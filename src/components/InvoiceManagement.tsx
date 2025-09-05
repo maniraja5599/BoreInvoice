@@ -1001,16 +1001,21 @@ const InvoiceManagement: React.FC = () => {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const marginX = 10;
-      let y = 12;
+      const marginX = 15;
+      let y = 20;
 
-      // Simple header
+      // Modern color scheme - Deep Ocean Blue & Teal
+      const primaryColor = { r: 13, g: 110, b: 139 }; // Deep ocean blue
+      const accentColor = { r: 17, g: 94, b: 89 }; // Deep teal
+      const lightTeal = { r: 208, g: 236, b: 231 }; // Light teal background
+      const darkGray = { r: 45, g: 55, b: 72 }; // Dark gray text
+
       // Load company details from settings
-      let companyName = 'Anjaneya Borewells';
+      let companyName = 'AquaFlow Solutions';
       let companyContact = '+91 98765 43210';
-      let companyAddress = '123 Main Street, City, State - PIN';
+      let companyAddress = '123 Water Works Street, Hydro City, Karnataka - 560001';
       let companyLogo: string | undefined;
-      let companyTagline = '';
+      let companyTagline = 'Excellence in Water Solutions';
       try {
         const saved = localStorage.getItem('anjaneya_settings');
         if (saved) {
@@ -1023,142 +1028,230 @@ const InvoiceManagement: React.FC = () => {
         }
       } catch {}
 
-      // Clean white header band (template style)
-      const headerHeight = 42;
-      doc.setFillColor(255, 255, 255);
+      // Modern gradient header background
+      const headerHeight = 55;
+      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.rect(0, 0, pageWidth, headerHeight, 'F');
+      
+      // Add decorative accent stripe
+      doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.rect(0, headerHeight - 3, pageWidth, 3, 'F');
 
-      // Header titles (company left, details right)
-      doc.setTextColor(0, 0, 0);
+      // Company name and tagline (white on blue)
+      doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text(companyName || 'Anjaneya Borewells', marginX, 18);
+      doc.setFontSize(24);
+      doc.text(companyName || 'AquaFlow Solutions', marginX, 25);
+      
       if (companyTagline) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text(companyTagline, marginX, 24);
+        doc.setFontSize(11);
+        doc.text(companyTagline, marginX, 35);
       }
 
-      // Right-side key details
-      const rightLabelX = pageWidth - marginX - 65;
-      const rightValueX = pageWidth - marginX;
-      let headerLineY = 12;
+      // Modern invoice info box (top right)
+      const infoBoxX = pageWidth - 70;
+      const infoBoxY = 10;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(infoBoxX, infoBoxY, 55, 35, 3, 3, 'FD');
+      
+      // Invoice details in the box
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('INVOICE', infoBoxX + 3, infoBoxY + 8);
+      
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date:', rightLabelX, headerLineY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(new Date(invoice.invoiceDate).toLocaleDateString(), rightValueX, headerLineY, { align: 'right' });
-      headerLineY += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Invoice Number:', rightLabelX, headerLineY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${invoice.invoiceNumber || 'N/A'}`, rightValueX, headerLineY, { align: 'right' });
-      headerLineY += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Estimate For:', rightLabelX, headerLineY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${invoice.customer.name || ''}`, rightValueX, headerLineY, { align: 'right' });
+      doc.text(`# ${invoice.invoiceNumber || 'INV-001'}`, infoBoxX + 3, infoBoxY + 16);
+      doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, infoBoxX + 3, infoBoxY + 23);
+      doc.text(`Due: ${new Date(invoice.dueDate).toLocaleDateString()}`, infoBoxX + 3, infoBoxY + 30);
 
-      // Optional logo in header (left)
-      if (companyLogo && companyLogo.startsWith('data:image')) {
-        try {
-          (doc as any).addImage(companyLogo, 'PNG', marginX, 3, 12, 12);
-        } catch (e) {
-          // ignore logo errors
-        }
+      y = headerHeight + 15;
+
+      // Company contact info section
+      doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+      doc.rect(marginX, y, pageWidth - 2 * marginX, 15, 'F');
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Contact: ${companyContact}`, marginX + 3, y + 6);
+      doc.text(`Address: ${companyAddress}`, marginX + 3, y + 12);
+
+      y += 25;
+
+      // Modern client section
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('BILL TO:', marginX, y);
+      
+      y += 8;
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(invoice.customer.name || 'Customer Name', marginX, y);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      y += 6;
+      if (invoice.customer.phoneNumber) {
+        doc.text(`Phone: ${invoice.customer.phoneNumber}`, marginX, y);
+        y += 5;
+      }
+      if (invoice.customer.email) {
+        doc.text(`Email: ${invoice.customer.email}`, marginX, y);
+        y += 5;
+      }
+      if (invoice.customer.address) {
+        const addressLines = doc.splitTextToSize(`Address: ${invoice.customer.address}`, 100);
+        doc.text(addressLines, marginX, y);
+        y += addressLines.length * 5;
       }
 
-      // Status badge removed (no DRAFT label on PDF)
-      let headerBottomY = headerHeight + 6;
-      y = headerBottomY;
+      y += 10;
 
-      // Optional watermark for PAID
+      // Paid watermark
       if (invoice.status && invoice.status.toUpperCase() === 'PAID') {
-        doc.setTextColor(180, 180, 180);
+        doc.setTextColor(200, 200, 200);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(60);
         (doc as any).text('PAID', pageWidth / 2, pageHeight / 2, { align: 'center', angle: 30 });
-        doc.setFontSize(9);
-        doc.setTextColor(0, 0, 0);
       }
 
-      y = 22;
-
-      // Company details (left)
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Company', marginX, y);
-    doc.setFont('helvetica', 'normal');
-      const addrLines = doc.splitTextToSize(companyAddress, 90);
-      doc.text(`Contact: ${companyContact}`, marginX, y + 5);
-      doc.text(addrLines, marginX, y + 10);
-
-      // Billing to block (left) and Invoice info (right)
-      const blockTop = headerHeight + 10;
-      const leftBlockW = (pageWidth - marginX * 2) * 0.5 - 5;
-      const rightBlockX = marginX + leftBlockW + 10;
-      // Billing To
-      doc.setFillColor(27, 94, 32);
-      doc.rect(marginX, blockTop, 40, 5, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8);
-      doc.text('BILLING TO', marginX + 2, blockTop + 3.6);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text(invoice.customer.name || '', marginX, blockTop + 11);
-      doc.setFont('helvetica', 'normal');
-      if (invoice.customer.phoneNumber) doc.text(`P: ${invoice.customer.phoneNumber}`, marginX, blockTop + 16);
-      if (invoice.customer.email) doc.text(`E: ${invoice.customer.email}`, marginX, blockTop + 21);
-      if (invoice.customer.address) {
-        const lines = doc.splitTextToSize(`A: ${invoice.customer.address}`, leftBlockW);
-        doc.text(lines, marginX, blockTop + 26);
+      // Items table - with detailed slab breakdown
+      const tableData = [];
+      let itemIndex = 1;
+      
+      // Process each invoice item and expand drilling items into slab breakdown
+      for (const item of invoice.items) {
+        if (item.description && (
+          item.description.includes('Drilling') || 
+          item.description.includes('Borewell') ||
+          (item.description.includes('feet') && item.type === 'service')
+        )) {
+          // This is a drilling item - break it down into slab ranges
+          const totalDepth = item.quantity || 0;
+          
+          if (totalDepth > 0) {
+            // Load actual slab rates from localStorage
+            let slabRates = {
+              rate1_300: 75,
+              rate301_400: 80,
+              rate401_500: 85,
+              rate501_600: 95,
+              rate601_700: 105,
+              rate701_800: 115,
+              rate801_900: 125,
+              rate901_1000: 135,
+              rate1001_1100: 235,
+              rate1101_1200: 335,
+              rate1201_1300: 435,
+              rate1301_1400: 535,
+              rate1401_1500: 635,
+              rate1501_1600: 735,
+              rate1600_plus: 835
+            };
+            
+            try {
+              const savedConfig = localStorage.getItem('anjaneya_slab_rate_config');
+              if (savedConfig) {
+                const parsed = JSON.parse(savedConfig);
+                if (parsed.type1) {
+                  slabRates = { ...slabRates, ...parsed.type1 };
+                }
+              }
+            } catch (error) {
+              console.log('Using default rates for PDF breakdown');
+            }
+            
+            const ranges = [
+              { maxDepth: 300, rate: slabRates.rate1_300, label: '1-300 feet' },
+              { maxDepth: 400, rate: slabRates.rate301_400, label: '301-400 feet' },
+              { maxDepth: 500, rate: slabRates.rate401_500, label: '401-500 feet' },
+              { maxDepth: 600, rate: slabRates.rate501_600, label: '501-600 feet' },
+              { maxDepth: 700, rate: slabRates.rate601_700, label: '601-700 feet' },
+              { maxDepth: 800, rate: slabRates.rate701_800, label: '701-800 feet' },
+              { maxDepth: 900, rate: slabRates.rate801_900, label: '801-900 feet' },
+              { maxDepth: 1000, rate: slabRates.rate901_1000, label: '901-1000 feet' },
+              { maxDepth: 1100, rate: slabRates.rate1001_1100, label: '1001-1100 feet' },
+              { maxDepth: 1200, rate: slabRates.rate1101_1200, label: '1101-1200 feet' },
+              { maxDepth: 1300, rate: slabRates.rate1201_1300, label: '1201-1300 feet' },
+              { maxDepth: 1400, rate: slabRates.rate1301_1400, label: '1301-1400 feet' },
+              { maxDepth: 1500, rate: slabRates.rate1401_1500, label: '1401-1500 feet' },
+              { maxDepth: 1600, rate: slabRates.rate1501_1600, label: '1501-1600 feet' },
+              { maxDepth: Infinity, rate: slabRates.rate1600_plus, label: '1600+ feet' }
+            ];
+            
+            // Calculate and add each slab range as a separate row
+            let remainingDepth = totalDepth;
+            let currentStart = 1;
+            
+            for (let i = 0; i < ranges.length && remainingDepth > 0; i++) {
+              const range = ranges[i];
+              const rangeStart = currentStart;
+              const rangeEnd = Math.min(range.maxDepth, rangeStart + remainingDepth - 1);
+              const depthInThisRange = rangeEnd - rangeStart + 1;
+              
+              if (depthInThisRange > 0) {
+                const cost = depthInThisRange * range.rate;
+                
+                tableData.push([
+                  String(itemIndex),
+                  `${rangeStart}-${rangeEnd} feet`,
+                  String(depthInThisRange),
+                  `Rs. ${range.rate.toFixed(2)}`,
+                  `Rs. ${cost.toFixed(2)}`
+                ]);
+                
+                itemIndex++;
+                remainingDepth -= depthInThisRange;
+                currentStart = rangeEnd + 1;
+              }
+            }
+          }
+        } else {
+          // Regular item (PVC, Bata, etc.) - add as is
+          tableData.push([
+            String(itemIndex),
+            item.description || '',
+            String(item.quantity || 0),
+            `Rs. ${(item.rate || 0).toFixed(2)}`,
+            `Rs. ${(item.amount || 0).toFixed(2)}`
+          ]);
+          itemIndex++;
+        }
       }
-
-      // Invoice info (right)
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(27, 94, 32);
-      doc.setFontSize(12);
-      doc.text('INVOICE', rightBlockX, blockTop + 2);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text(`Invoice  : ${invoice.invoiceNumber || 'N/A'}`, rightBlockX, blockTop + 10);
-      doc.text(`Date     : ${new Date(invoice.invoiceDate).toLocaleDateString()}`, rightBlockX, blockTop + 15);
-      doc.text(`Due Date : ${new Date(invoice.dueDate).toLocaleDateString()}`, rightBlockX, blockTop + 20);
-      y = blockTop + 28;
-
-      // Advance cursor after header blocks
-      const headerBlockHeight = Math.max(18, 12 + addrLines.length * 4);
-      y += headerBlockHeight + 4;
-
-      // Remove duplicate invoice and customer blocks (details already shown above)
-      // Keep current y as starting point for the items table.
-
-      // Items table - compact (template layout)
-    const tableData = invoice.items.map((item, index) => [
-      String(index + 1),
-      item.description,
-      String(item.quantity),
-      `Rs. ${item.rate.toFixed(2)}`,
-      `Rs. ${item.amount.toFixed(2)}`
-    ]);
     
     (doc as any).autoTable({
         startY: y,
-      head: [['ST', 'ITEM DESCRIPTION', 'QTY', 'RATE', 'AMOUNT']],
+      head: [['#', 'SERVICE DESCRIPTION', 'QTY', 'RATE', 'AMOUNT']],
       body: tableData,
-      theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 1.2, lineColor: [200, 230, 201], lineWidth: 0.2 },
-        headStyles: { fillColor: [27, 94, 32], textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 249, 245] },
+      theme: 'striped',
+        styles: { 
+          fontSize: 9, 
+          cellPadding: 3, 
+          lineColor: [accentColor.r, accentColor.g, accentColor.b], 
+          lineWidth: 0.3,
+          textColor: [darkGray.r, darkGray.g, darkGray.b],
+          fontStyle: 'normal'
+        },
+        headStyles: { 
+          fillColor: [primaryColor.r, primaryColor.g, primaryColor.b], 
+          textColor: [255, 255, 255], 
+          fontStyle: 'bold',
+          fontSize: 10,
+          halign: 'center'
+        },
+        alternateRowStyles: { fillColor: [lightTeal.r, lightTeal.g, lightTeal.b] },
         columnStyles: {
-          0: { cellWidth: 12, halign: 'center' },
-          1: { cellWidth: 92, halign: 'left' },
-          2: { cellWidth: 18, halign: 'center' },
-          3: { cellWidth: 24, halign: 'right' },
-          4: { cellWidth: 28, halign: 'right' }
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 85, halign: 'left' },
+          2: { cellWidth: 20, halign: 'center' },
+          3: { cellWidth: 25, halign: 'right' },
+          4: { cellWidth: 30, halign: 'right' }
         },
         margin: { left: marginX, right: marginX },
         tableWidth: pageWidth - marginX * 2
@@ -1166,95 +1259,123 @@ const InvoiceManagement: React.FC = () => {
 
       let afterTableY = (doc as any).lastAutoTable.finalY + 6;
 
-      // Totals - compact, right aligned
-      const totalsX = pageWidth - marginX - 60;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      // decorative green accent line above totals
-      doc.setDrawColor(46, 125, 50);
-      doc.setLineWidth(0.4);
-      doc.line(totalsX - 2, afterTableY - 3, pageWidth - marginX, afterTableY - 3);
-      doc.text('Subtotal:', totalsX, afterTableY);
-    doc.setFont('helvetica', 'normal');
-      doc.text(`Rs. ${invoice.subtotal.toFixed(2)}`, totalsX + 40, afterTableY, { align: 'right' });
-    
-    if (invoice.taxAmount > 0) {
-      doc.setFont('helvetica', 'bold');
-        doc.text(`Tax (${(invoice.taxRate * 100).toFixed(0)}%):`, totalsX, afterTableY + 5);
-      doc.setFont('helvetica', 'normal');
-        doc.text(`Rs. ${invoice.taxAmount.toFixed(2)}`, totalsX + 40, afterTableY + 5, { align: 'right' });
-        afterTableY += 5;
-      }
-
-      // Advance
-      if (invoice.paidAmount && invoice.paidAmount > 0) {
-    doc.setFont('helvetica', 'bold');
-        doc.text('Advance:', totalsX, afterTableY + 5);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Rs. ${invoice.paidAmount.toFixed(2)}`, totalsX + 40, afterTableY + 5, { align: 'right' });
-        afterTableY += 5;
-      }
-
-      // Total and Balance
-      doc.setFont('helvetica', 'bold');
-      // highlight total row with light green
-      doc.setFillColor(232, 245, 233);
-      doc.rect(totalsX - 2, afterTableY + 2, 62, 6, 'F');
-      doc.text('Total:', totalsX, afterTableY + 5);
-      doc.text(`Rs. ${invoice.totalAmount.toFixed(2)}`, totalsX + 40, afterTableY + 5, { align: 'right' });
+      // Modern totals section
+      const totalsX = pageWidth - marginX - 65;
       afterTableY += 5;
-
-      const balance = (invoice.totalAmount || 0) - (invoice.paidAmount || 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Balance:', totalsX, afterTableY + 5);
+      
+      // Totals background box
+      doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(totalsX - 5, afterTableY - 3, 70, 35, 2, 2, 'FD');
+      
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Rs. ${Math.max(balance, 0).toFixed(2)}`, totalsX + 40, afterTableY + 5, { align: 'right' });
-      afterTableY += 8;
+      
+      // Subtotal
+      doc.text('Subtotal:', totalsX, afterTableY + 3);
+      doc.text(`Rs. ${invoice.subtotal.toFixed(2)}`, totalsX + 45, afterTableY + 3, { align: 'right' });
+      
+      // Tax if applicable
+      if (invoice.taxAmount > 0) {
+        doc.text(`Tax (${(invoice.taxRate * 100).toFixed(0)}%):`, totalsX, afterTableY + 8);
+        doc.text(`Rs. ${invoice.taxAmount.toFixed(2)}`, totalsX + 45, afterTableY + 8, { align: 'right' });
+        afterTableY += 5;
+      }
+
+      // Advance payment if applicable
+      if (invoice.paidAmount && invoice.paidAmount > 0) {
+        doc.text('Advance:', totalsX, afterTableY + 8);
+        doc.text(`Rs. ${invoice.paidAmount.toFixed(2)}`, totalsX + 45, afterTableY + 8, { align: 'right' });
+        afterTableY += 5;
+      }
+
+      // Total amount with emphasis
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.text('TOTAL:', totalsX, afterTableY + 13);
+      doc.text(`Rs. ${invoice.totalAmount.toFixed(2)}`, totalsX + 45, afterTableY + 13, { align: 'right' });
+
+      // Balance due
+      const balance = (invoice.totalAmount || 0) - (invoice.paidAmount || 0);
+      if (balance > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Balance Due:', totalsX, afterTableY + 20);
+        doc.text(`Rs. ${Math.max(balance, 0).toFixed(2)}`, totalsX + 45, afterTableY + 20, { align: 'right' });
+      }
+      
+      afterTableY += 25;
     
-      // Amount in words
+      // Amount in words section
       const words = numberToWordsIndian(Math.round(invoice.totalAmount || 0));
       if (words) {
+        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+        doc.roundedRect(marginX, afterTableY, pageWidth - marginX * 2, 15, 3, 3, 'F');
+        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
         doc.setFont('helvetica', 'bold');
-        doc.text('Amount in words:', marginX, afterTableY);
+        doc.setFontSize(9);
+        doc.text('Amount in Words:', marginX + 5, afterTableY + 6);
         doc.setFont('helvetica', 'normal');
-        const wordsLines = doc.splitTextToSize(`${words} rupees only`, pageWidth - marginX * 2);
-        doc.text(wordsLines, marginX + 32, afterTableY);
-        afterTableY += 8 + (Array.isArray(wordsLines) ? wordsLines.length * 4 : 0);
+        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+        const wordsText = `${words} rupees only`.toUpperCase();
+        const wordsLines = doc.splitTextToSize(wordsText, pageWidth - marginX * 2 - 10);
+        doc.text(wordsLines, marginX + 5, afterTableY + 11);
+        afterTableY += 20;
       }
 
-      // Notes & Terms block (styled)
+      // Notes & Terms with modern styling
       const boxWidth = pageWidth - marginX * 2;
       if (invoice.notes) {
-        doc.setFillColor(232, 245, 233);
-        doc.roundedRect(marginX, afterTableY, boxWidth, 12, 2, 2, 'F');
+        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(marginX, afterTableY, boxWidth, 15, 3, 3, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(27, 94, 32);
-        doc.text('Notes', marginX + 2, afterTableY + 4);
+        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        doc.setFontSize(9);
+        doc.text('NOTES:', marginX + 5, afterTableY + 6);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        const noteLines = doc.splitTextToSize(invoice.notes, boxWidth - 4);
-        doc.text(noteLines, marginX + 2, afterTableY + 9);
-        afterTableY += 14 + (Array.isArray(noteLines) ? noteLines.length * 4 : 8);
+        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+        doc.setFontSize(8);
+        const noteLines = doc.splitTextToSize(invoice.notes, boxWidth - 10);
+        doc.text(noteLines, marginX + 5, afterTableY + 11);
+        afterTableY += 20;
       }
+      
       if (invoice.terms) {
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(marginX, afterTableY, boxWidth, 12, 2, 2, 'F');
+        doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(marginX, afterTableY, boxWidth, 15, 3, 3, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(27, 94, 32);
-        doc.text('Terms & Conditions', marginX + 2, afterTableY + 4);
+        doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        doc.setFontSize(9);
+        doc.text('TERMS & CONDITIONS:', marginX + 5, afterTableY + 6);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        const termLines = doc.splitTextToSize(invoice.terms, boxWidth - 4);
-        doc.text(termLines, marginX + 2, afterTableY + 9);
-        afterTableY += 14 + (Array.isArray(termLines) ? termLines.length * 4 : 8);
+        doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+        doc.setFontSize(8);
+        const termLines = doc.splitTextToSize(invoice.terms, boxWidth - 10);
+        doc.text(termLines, marginX + 5, afterTableY + 11);
+        afterTableY += 20;
       }
 
-      // Footer bar (letterpad style)
-      doc.setFillColor(46, 125, 50);
-      doc.rect(0, pageHeight - 14, pageWidth, 14, 'F');
+      // Modern footer with gradient
+      const footerY = pageHeight - 20;
+      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.rect(0, footerY, pageWidth, 20, 'F');
+      doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.rect(0, footerY, pageWidth, 3, 'F');
+      
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8);
-      doc.text(`${companyName} • ${companyAddress} • ${companyContact}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(companyName, pageWidth / 2, footerY + 8, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 14, { align: 'center' });
 
       // Reset text color to black before save
       doc.setTextColor(0, 0, 0);
@@ -1311,24 +1432,6 @@ const InvoiceManagement: React.FC = () => {
     return updated;
   };
 
-  // Debug function to log invoice structure
-  const debugInvoice = (invoice: ServiceInvoice) => {
-    console.log('🔍 Debug Invoice Structure:', {
-      id: invoice.id,
-      invoiceNumber: invoice.invoiceNumber,
-      status: invoice.status,
-      customer: invoice.customer,
-      serviceDetails: invoice.serviceDetails,
-      items: invoice.items,
-      subtotal: invoice.subtotal,
-      taxAmount: invoice.taxAmount,
-      totalAmount: invoice.totalAmount,
-      invoiceDate: invoice.invoiceDate,
-      dueDate: invoice.dueDate,
-      notes: invoice.notes,
-      terms: invoice.terms
-    });
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -2295,13 +2398,6 @@ const InvoiceManagement: React.FC = () => {
                  </button>
                  <button
                    type="button"
-                   onClick={() => debugInvoice(viewingInvoice)}
-                   className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
-                 >
-                   Debug
-                 </button>
-                 <button
-                   type="button"
                    onClick={handleCloseViewModal}
                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                  >
@@ -2412,8 +2508,18 @@ const InvoiceManagement: React.FC = () => {
                     i.id === editingInvoice.id ? applyEditsToInvoice(i, { ...editingInvoice, items: newItems, subtotal: newSubtotal, taxAmount: newTax, totalAmount: newTotal, pendingAmount: Math.max(newTotal - (editingInvoice.paidAmount || 0), 0) }) : i
                   );
                   setInvoices(updatedInvoices);
+                  setFilteredInvoices(updatedInvoices);
                   localStorage.setItem('anjaneya_invoices', JSON.stringify(updatedInvoices));
-                  toast.success('Invoice updated');
+                  
+                  // Update viewing invoice if it's the same one being edited
+                  if (viewingInvoice && viewingInvoice.id === editingInvoice.id) {
+                    const updatedViewingInvoice = updatedInvoices.find(inv => inv.id === editingInvoice.id);
+                    if (updatedViewingInvoice) {
+                      setViewingInvoice(updatedViewingInvoice);
+                    }
+                  }
+                  
+                  toast.success('Invoice updated successfully!');
                   setShowEditModal(false);
                 }}
               >

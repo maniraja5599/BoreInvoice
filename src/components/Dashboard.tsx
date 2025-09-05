@@ -304,11 +304,11 @@ const Dashboard: React.FC = () => {
                 </span>
               </div>
               <div className="mt-8">
-                <h3 className="text-lg font-medium">
+                <h3 className="text-lg font-medium text-gray-900">
                   <span className="absolute inset-0" aria-hidden="true" />
                   Manage Customers
                 </h3>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-600">
                   Add, edit, and view customer information
                 </p>
               </div>
@@ -324,11 +324,11 @@ const Dashboard: React.FC = () => {
                 </span>
               </div>
               <div className="mt-8">
-                <h3 className="text-lg font-medium">
+                <h3 className="text-lg font-medium text-gray-900">
                   <span className="absolute inset-0" aria-hidden="true" />
                   New Project
                 </h3>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-600">
                   Create a new borewell project
                 </p>
               </div>
@@ -344,11 +344,11 @@ const Dashboard: React.FC = () => {
                 </span>
               </div>
               <div className="mt-8">
-                <h3 className="text-lg font-medium">
+                <h3 className="text-lg font-medium text-gray-900">
                   <span className="absolute inset-0" aria-hidden="true" />
                   Payments
                 </h3>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-600">
                   Track payments and manage finances
                 </p>
               </div>
@@ -364,11 +364,11 @@ const Dashboard: React.FC = () => {
                  </span>
                </div>
                <div className="mt-8">
-                 <h3 className="text-lg font-medium">
+                 <h3 className="text-lg font-medium text-gray-900">
                    <span className="absolute inset-0" aria-hidden="true" />
                    Slab Rates
                  </h3>
-                 <p className="mt-2 text-sm text-gray-500">
+                 <p className="mt-2 text-sm text-gray-600">
                    Manage drilling rates and calculate costs
                  </p>
                </div>
@@ -384,11 +384,11 @@ const Dashboard: React.FC = () => {
                  </span>
                </div>
                <div className="mt-8">
-                 <h3 className="text-lg font-medium">
+                 <h3 className="text-lg font-medium text-gray-900">
                    <span className="absolute inset-0" aria-hidden="true" />
                    Reports
                  </h3>
-                 <p className="mt-2 text-sm text-gray-500">
+                 <p className="mt-2 text-sm text-gray-600">
                    Generate and view service reports
                  </p>
                </div>

@@ -35,6 +35,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return location.pathname === href || location.pathname.startsWith(href + '/');
   };
 
+  const getIconColors = (itemName: string, isActiveState: boolean) => {
+    const iconColors = {
+      'Dashboard': {
+        active: 'text-blue-600',
+        inactive: 'text-blue-400',
+        hover: 'group-hover:text-blue-500'
+      },
+      'Customers': {
+        active: 'text-green-600',
+        inactive: 'text-green-400',
+        hover: 'group-hover:text-green-500'
+      },
+      'Invoices': {
+        active: 'text-purple-600',
+        inactive: 'text-purple-400',
+        hover: 'group-hover:text-purple-500'
+      },
+      'Slab Rates': {
+        active: 'text-orange-600',
+        inactive: 'text-orange-400',
+        hover: 'group-hover:text-orange-500'
+      },
+      'Payments': {
+        active: 'text-yellow-600',
+        inactive: 'text-yellow-500',
+        hover: 'group-hover:text-yellow-600'
+      },
+      'Reports': {
+        active: 'text-indigo-600',
+        inactive: 'text-indigo-400',
+        hover: 'group-hover:text-indigo-500'
+      },
+      'Settings': {
+        active: 'text-gray-600',
+        inactive: 'text-gray-400',
+        hover: 'group-hover:text-gray-500'
+      }
+    };
+
+    const colors = iconColors[itemName as keyof typeof iconColors] || iconColors['Settings'];
+    return isActiveState ? colors.active : `${colors.inactive} ${colors.hover}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar */}
@@ -68,8 +111,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={() => setSidebarOpen(false)}
               >
                 <item.icon
-                  className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200 ${
-                    isActive(item.href) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'
+                  className={`mr-3 h-5 w-5 flex-shrink-0 font-bold transition-colors duration-200 ${
+                    getIconColors(item.name, isActive(item.href))
                   }`}
                 />
                 {item.name}
@@ -100,8 +143,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }`}
               >
                 <item.icon
-                  className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200 ${
-                    isActive(item.href) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'
+                  className={`mr-3 h-5 w-5 flex-shrink-0 font-bold transition-colors duration-200 ${
+                    getIconColors(item.name, isActive(item.href))
                   }`}
                 />
                 {item.name}
