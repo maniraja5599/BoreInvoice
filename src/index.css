@@ -126,165 +126,27 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Ensure all text is visible with proper contrast */
-* {
-  color: inherit;
-}
-
-/* Override light text colors */
-.text-gray-500,
-.text-gray-400,
-.text-gray-300,
-.text-gray-200,
-.text-gray-100 {
-  color: #374151 !important;
-}
-
-.text-slate-500,
-.text-slate-400,
-.text-slate-300,
-.text-slate-200,
-.text-slate-100 {
-  color: #374151 !important;
-}
-
-/* Make sure labels are dark */
+/* Basic color overrides for better contrast */
 label {
-  color: #1f2937 !important;
+  color: #1f2937;
   font-weight: 600;
 }
 
-/* Make sure form text is dark */
 input, select, textarea {
-  color: #1f2937 !important;
+  color: #1f2937;
 }
 
 input::placeholder, 
 select::placeholder, 
 textarea::placeholder {
-  color: #6b7280 !important;
+  color: #6b7280;
 }
 
-/* Make sure navigation text is dark - except for buttons with specific background colors */
-nav a:not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600):not(.btn-primary):not(.btn-secondary), 
-nav span:not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600):not(.btn-primary):not(.btn-secondary), 
-nav div:not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600):not(.btn-primary):not(.btn-secondary) {
-  color: #1f2937 !important;
-}
-
-/* Make sure sidebar text is dark */
-aside a, aside span, aside div {
-  color: #1f2937 !important;
-}
-
-/* Make sure headings are dark */
-h1, h2, h3, h4, h5, h6 {
-  color: #111827 !important;
-}
-
-/* Make sure paragraph text is dark - except for buttons and specific components */
-p:not(.btn-primary):not(.btn-secondary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600), 
-span:not(.btn-primary):not(.btn-secondary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600):not(.text-white), 
-div:not(.btn-primary):not(.btn-secondary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600) {
-  color: #374151 !important;
-}
-
-/* Override light text colors but preserve white text on colored backgrounds */
-.text-white:not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600):not(.btn-primary):not(.btn-secondary):not([class*="bg-blue-"]):not([class*="bg-green-"]):not([class*="bg-red-"]) {
-  color: #1f2937 !important;
-}
-
-.text-gray-50,
-.text-gray-100,
-.text-gray-200,
+/* Keep only essential text overrides for light gray colors */
 .text-gray-300,
 .text-gray-400,
-.text-gray-500,
-.text-gray-600,
-.text-gray-700,
-.text-gray-800,
-.text-gray-900 {
-  color: #374151 !important;
-}
-
-.text-slate-50,
-.text-slate-100,
-.text-slate-200,
-.text-slate-300,
-.text-slate-400,
-.text-slate-500,
-.text-slate-600,
-.text-slate-700,
-.text-slate-800,
-.text-slate-900 {
-  color: #374151 !important;
-}
-
-.text-zinc-50,
-.text-zinc-100,
-.text-zinc-200,
-.text-zinc-300,
-.text-zinc-400,
-.text-zinc-500,
-.text-zinc-600,
-.text-zinc-700,
-.text-zinc-800,
-.text-zinc-900 {
-  color: #374151 !important;
-}
-
-.text-neutral-50,
-.text-neutral-100,
-.text-neutral-200,
-.text-neutral-300,
-.text-neutral-400,
-.text-neutral-500,
-.text-neutral-600,
-.text-neutral-700,
-.text-neutral-800,
-.text-neutral-900 {
-  color: #374151 !important;
-}
-
-/* Ensure specific text elements are dark */
-.text-sm,
-.text-base,
-.text-lg,
-.text-xl,
-.text-2xl,
-.text-3xl {
-  color: #374151 !important;
-}
-
-/* Make sure all form elements have dark text */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="tel"],
-input[type="url"],
-input[type="search"],
-input[type="date"],
-input[type="time"],
-input[type="datetime-local"],
-select,
-textarea {
-  color: #1f2937 !important;
-}
-
-input[type="text"]::placeholder,
-input[type="email"]::placeholder,
-input[type="password"]::placeholder,
-input[type="number"]::placeholder,
-input[type="tel"]::placeholder,
-input[type="url"]::placeholder,
-input[type="search"]::placeholder,
-input[type="date"]::placeholder,
-input[type="time"]::placeholder,
-input[type="datetime-local"]::placeholder,
-select::placeholder,
-textarea::placeholder {
-  color: #6b7280 !important;
+.text-gray-500 {
+  color: #6b7280;
 }
 
 /* Luxurious Card Design */
@@ -325,7 +187,7 @@ textarea::placeholder {
   padding: 1rem 1.25rem;
   border: 2px solid rgba(178, 190, 217, 0.2);
   border-radius: 0.75rem;
-  color: #1f2937 !important;
+  color: #1f2937;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   box-shadow: 
@@ -345,12 +207,12 @@ textarea::placeholder {
     0 8px 16px -4px rgba(178, 190, 217, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.95);
-  color: #1f2937 !important;
+  color: #1f2937;
   transform: translateY(-1px);
 }
 
 .input-field::placeholder {
-  color: #6b7280 !important;
+  color: #6b7280;
   font-weight: 400;
 }
 
@@ -360,7 +222,7 @@ textarea::placeholder {
   padding: 1rem 1.25rem;
   border: 2px solid rgba(178, 190, 217, 0.2);
   border-radius: 0.75rem;
-  color: #1f2937 !important;
+  color: #1f2937;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   box-shadow: 
@@ -385,7 +247,7 @@ textarea::placeholder {
     0 8px 16px -4px rgba(178, 190, 217, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.95);
-  color: #1f2937 !important;
+  color: #1f2937;
   transform: translateY(-1px);
 }
 
@@ -442,7 +304,7 @@ textarea::placeholder {
   padding: 1rem 2rem;
   border-radius: 0.75rem;
   font-weight: 700;
-  color: #374151 !important;
+  color: #374151;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(178, 190, 217, 0.2);
@@ -837,15 +699,15 @@ a.bg-green-700 {
 }
 
 .slab-rate-config .card-input {
-  color: #1f2937 !important;
+  color: #1f2937;
 }
 
 .slab-rate-config .card-input::placeholder {
-  color: #6b7280 !important;
+  color: #6b7280;
 }
 
 .slab-rate-config .card-label {
-  color: #374151 !important;
+  color: #374151;
 }
 
 .slab-rate-config .card-text {

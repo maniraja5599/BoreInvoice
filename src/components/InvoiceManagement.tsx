@@ -482,17 +482,34 @@ const InvoiceManagement: React.FC = () => {
       // Create invoice items from the calculated rates
       const items: InvoiceItem[] = [];
       
-      // Add drilling service as single consolidated item (no slab rate details in PDF)
+      // Add drilling service items with detailed breakdown but without slab type mention
       if (invoiceData.calculatedRates.slabCost > 0) {
-        items.push({
-          id: `item_${Date.now()}_1`,
-          type: 'service',
-          description: `${invoiceData.serviceType} - ${invoiceData.totalDepth} feet`,
-          quantity: invoiceData.totalDepth,
-          unit: 'feet',
-          rate: invoiceData.calculatedRates.slabCost / invoiceData.totalDepth,
-          amount: invoiceData.calculatedRates.slabCost
-        });
+        // Check if we have detailed breakdown
+        if (invoiceData.calculatedRates.slabBreakdown && invoiceData.calculatedRates.slabBreakdown.length > 0) {
+          // Add each slab range as a separate item but without slab type text
+          invoiceData.calculatedRates.slabBreakdown.forEach((slabItem: any, index: number) => {
+            items.push({
+              id: `item_${Date.now()}_slab_${index}`,
+              type: 'service',
+              description: `Borewell Drilling - ${slabItem.range}`,
+              quantity: slabItem.depth,
+              unit: 'feet',
+              rate: slabItem.rate,
+              amount: slabItem.cost
+            });
+          });
+        } else {
+          // Fallback to single item if no breakdown available
+          items.push({
+            id: `item_${Date.now()}_1`,
+            type: 'service',
+            description: `${invoiceData.serviceType} - ${invoiceData.totalDepth} feet`,
+            quantity: invoiceData.totalDepth,
+            unit: 'feet',
+            rate: invoiceData.calculatedRates.slabCost / invoiceData.totalDepth,
+            amount: invoiceData.calculatedRates.slabCost
+          });
+        }
       }
       
       // Add PVC items
