@@ -1040,7 +1040,7 @@ const InvoiceManagement: React.FC = () => {
       // Company name and tagline (white on blue)
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(24);
+      doc.setFontSize(18);
       doc.text(companyName || 'AquaFlow Solutions', marginX, 25);
       
       if (companyTagline) {
