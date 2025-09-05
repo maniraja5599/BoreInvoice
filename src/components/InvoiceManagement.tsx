@@ -1140,14 +1140,14 @@ const InvoiceManagement: React.FC = () => {
     const tableData = invoice.items.map((item, index) => [
       String(index + 1),
       item.description,
-      `Rs. ${item.rate.toFixed(2)}`,
       String(item.quantity),
+      `Rs. ${item.rate.toFixed(2)}`,
       `Rs. ${item.amount.toFixed(2)}`
     ]);
     
     (doc as any).autoTable({
         startY: y,
-      head: [['ST', 'ITEM DESCRIPTION', 'RATE', 'QTY', 'AMOUNT']],
+      head: [['ST', 'ITEM DESCRIPTION', 'QTY', 'RATE', 'AMOUNT']],
       body: tableData,
       theme: 'grid',
         styles: { fontSize: 8, cellPadding: 1.2, lineColor: [200, 230, 201], lineWidth: 0.2 },
@@ -1156,8 +1156,8 @@ const InvoiceManagement: React.FC = () => {
         columnStyles: {
           0: { cellWidth: 12, halign: 'center' },
           1: { cellWidth: 92, halign: 'left' },
-          2: { cellWidth: 24, halign: 'right' },
-          3: { cellWidth: 18, halign: 'center' },
+          2: { cellWidth: 18, halign: 'center' },
+          3: { cellWidth: 24, halign: 'right' },
           4: { cellWidth: 28, halign: 'right' }
         },
         margin: { left: marginX, right: marginX },
