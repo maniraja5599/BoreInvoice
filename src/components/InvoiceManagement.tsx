@@ -1004,9 +1004,11 @@ const InvoiceManagement: React.FC = () => {
       const marginX = 15;
       let y = 20;
 
-      // Modern color scheme - Deep Ocean Blue & Teal
+      // Modern gradient color scheme
       const primaryColor = { r: 13, g: 110, b: 139 }; // Deep ocean blue
       const accentColor = { r: 17, g: 94, b: 89 }; // Deep teal
+      const gradientStart = { r: 41, g: 128, b: 185 }; // Bright blue
+      const gradientEnd = { r: 109, g: 213, b: 250 }; // Light blue
       const lightTeal = { r: 208, g: 236, b: 231 }; // Light teal background
       const darkGray = { r: 45, g: 55, b: 72 }; // Dark gray text
 
@@ -1030,14 +1032,25 @@ const InvoiceManagement: React.FC = () => {
 
       // Modern gradient header background
       const headerHeight = 40;
-      doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-      doc.rect(0, 0, pageWidth, headerHeight, 'F');
+      
+      // Create gradient effect by drawing multiple rectangles with different colors
+      const gradientSteps = 8;
+      for (let i = 0; i < gradientSteps; i++) {
+        const ratio = i / (gradientSteps - 1);
+        const r = Math.round(gradientStart.r + (gradientEnd.r - gradientStart.r) * ratio);
+        const g = Math.round(gradientStart.g + (gradientEnd.g - gradientStart.g) * ratio);
+        const b = Math.round(gradientStart.b + (gradientEnd.b - gradientStart.b) * ratio);
+        
+        doc.setFillColor(r, g, b);
+        const rectHeight = headerHeight / gradientSteps;
+        doc.rect(0, i * rectHeight, pageWidth, rectHeight, 'F');
+      }
       
       // Add decorative accent stripe
       doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
       doc.rect(0, headerHeight - 3, pageWidth, 3, 'F');
 
-      // Company name and tagline (white on blue)
+      // Company name and tagline (white text for visibility)
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
@@ -1303,39 +1316,62 @@ const InvoiceManagement: React.FC = () => {
 
       // Notes & Terms sections - REMOVED
 
-      // Modern footer with gradient - ensure no overlap with content
-      afterTableY += 10; // Add some space before footer
-      const footerY = Math.max(afterTableY, pageHeight - 30); // Use dynamic position or bottom of page
+      // Modern gradient footer at bottom of page
+      const footerHeight = 20;
+      const footerY = pageHeight - footerHeight; // Position at very bottom of page
       
-      // Check if we need a new page
-      if (footerY + 20 > pageHeight - 10) {
+      // Check if content overlaps with footer, if so add new page
+      if (afterTableY > footerY - 10) {
         doc.addPage();
-        const newFooterY = pageHeight - 30;
-        doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        doc.rect(0, newFooterY, pageWidth, 20, 'F');
-        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-        doc.rect(0, newFooterY, pageWidth, 3, 'F');
+        // Create footer gradient on new page
+        for (let i = 0; i < gradientSteps; i++) {
+          const ratio = i / (gradientSteps - 1);
+          const r = Math.round(gradientEnd.r + (gradientStart.r - gradientEnd.r) * ratio); // Reverse gradient
+          const g = Math.round(gradientEnd.g + (gradientStart.g - gradientEnd.g) * ratio);
+          const b = Math.round(gradientEnd.b + (gradientStart.b - gradientEnd.b) * ratio);
+          
+          doc.setFillColor(r, g, b);
+          const rectHeight = footerHeight / gradientSteps;
+          doc.rect(0, footerY + i * rectHeight, pageWidth, rectHeight, 'F');
+        }
         
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text(companyName, pageWidth / 2, newFooterY + 8, { align: 'center' });
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, newFooterY + 14, { align: 'center' });
-      } else {
-        doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        doc.rect(0, footerY, pageWidth, 20, 'F');
+        // Add accent stripe at top of footer
         doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
         doc.rect(0, footerY, pageWidth, 3, 'F');
         
+        // Footer text with white color for visibility
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(companyName, pageWidth / 2, footerY + 8, { align: 'center' });
+        doc.text(companyName, pageWidth / 2, footerY + 10, { align: 'center' });
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 14, { align: 'center' });
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 16, { align: 'center' });
+      } else {
+        // Create footer gradient on current page
+        for (let i = 0; i < gradientSteps; i++) {
+          const ratio = i / (gradientSteps - 1);
+          const r = Math.round(gradientEnd.r + (gradientStart.r - gradientEnd.r) * ratio); // Reverse gradient
+          const g = Math.round(gradientEnd.g + (gradientStart.g - gradientEnd.g) * ratio);
+          const b = Math.round(gradientEnd.b + (gradientStart.b - gradientEnd.b) * ratio);
+          
+          doc.setFillColor(r, g, b);
+          const rectHeight = footerHeight / gradientSteps;
+          doc.rect(0, footerY + i * rectHeight, pageWidth, rectHeight, 'F');
+        }
+        
+        // Add accent stripe at top of footer
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(0, footerY, pageWidth, 3, 'F');
+        
+        // Footer text with white color for visibility
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyName, pageWidth / 2, footerY + 10, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 16, { align: 'center' });
       }
 
       // Reset text color to black before save
