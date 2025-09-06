@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { customerService } from '../services/borewellService';
+import { enhancedCustomerService } from '../services/borewellService';
 import { slabRateService } from '../services/slabRateService';
 import { Customer, SlabRate } from '../types';
 import toast from 'react-hot-toast';
@@ -125,13 +125,19 @@ const QuotationCreator: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const customerData = customerService.getAll();
+      console.log('Loading quotation data...');
+      const customerData = enhancedCustomerService.getAll();
+      console.log('Customer data loaded:', customerData.length, 'customers');
+      
       const slabData = slabRateService.getAll();
+      console.log('Slab rate data loaded:', slabData.length, 'rates');
+      
       setCustomers(customerData);
       setSlabRates(slabData);
+      console.log('Data loading completed successfully');
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Failed to load data');
+      toast.error(`Failed to load data: ${error.message || error}`);
     }
   };
 
@@ -324,7 +330,7 @@ const QuotationCreator: React.FC = () => {
     }
 
     try {
-      const customer = customerService.create({
+      const customer = enhancedCustomerService.create({
         ...newCustomer,
         billingStatus: 'UNPAID',
         paymentAmount: 0,
