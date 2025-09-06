@@ -402,13 +402,13 @@ const QuotationManagement: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Quotation Management</h1>
           <p className="mt-2 text-sm text-gray-700">
             Create and manage quotations for borewell services
           </p>
         </div>
-        <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+        <div className="flex items-center space-x-3 mt-4 sm:mt-0 flex-shrink-0">
           {/* View Toggle */}
           <div className="flex rounded-md shadow-sm">
             <button
@@ -435,10 +435,10 @@ const QuotationManagement: React.FC = () => {
           
           <button
             onClick={() => setShowEnhancedForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-w-0 whitespace-nowrap"
           >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            New Quotation
+            <PlusIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span className="truncate">New Quotation</span>
           </button>
         </div>
       </div>
@@ -608,10 +608,10 @@ const QuotationManagement: React.FC = () => {
               <div className="mt-6">
                 <button
                   onClick={() => setShowEnhancedForm(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-w-0 whitespace-nowrap"
                 >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  New Quotation
+                  <PlusIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">New Quotation</span>
                 </button>
               </div>
             </div>
