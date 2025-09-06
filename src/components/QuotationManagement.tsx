@@ -88,7 +88,7 @@ const QuotationManagement: React.FC = () => {
           unit: 'feet',
           rate: editStartingRate,
           amount: editDepth * editStartingRate,
-          taxRate: 18
+          type: 'service' as const
         },
         ...(editPVC7 > 0 ? [{
           id: 'pvc7',
@@ -97,7 +97,7 @@ const QuotationManagement: React.FC = () => {
           unit: 'feet', 
           rate: editPVC7Rate,
           amount: editPVC7 * editPVC7Rate,
-          taxRate: 18
+          type: 'material' as const
         }] : []),
         ...(editPVC10 > 0 ? [{
           id: 'pvc10',
@@ -106,7 +106,7 @@ const QuotationManagement: React.FC = () => {
           unit: 'feet',
           rate: editPVC10Rate,
           amount: editPVC10 * editPVC10Rate,
-          taxRate: 18
+          type: 'material' as const
         }] : []),
         ...(editBata > 0 ? [{
           id: 'bata',
@@ -115,7 +115,7 @@ const QuotationManagement: React.FC = () => {
           unit: 'lot',
           rate: editBata,
           amount: editBata,
-          taxRate: 18
+          type: 'labor' as const
         }] : [])
       ] as InvoiceItem[]
     };
@@ -228,7 +228,7 @@ const QuotationManagement: React.FC = () => {
       id: Date.now().toString(),
       invoiceNumber: generateQuotationNumber(),
       quotationDate: new Date(),
-      status: 'DRAFT',
+      status: 'PENDING',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -365,12 +365,19 @@ const QuotationManagement: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'DRAFT': return 'bg-gray-100 text-gray-800';
-      case 'SENT': return 'bg-blue-100 text-blue-800';
-      case 'ACCEPTED': return 'bg-green-100 text-green-800';
-      case 'REJECTED': return 'bg-red-100 text-red-800';
-      case 'EXPIRED': return 'bg-orange-100 text-orange-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'PAID': return 'bg-green-100 text-green-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusDisplayName = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'Draft';
+      case 'PAID': return 'Accepted';
+      case 'CANCELLED': return 'Rejected';
+      default: return status;
     }
   };
 
@@ -534,7 +541,7 @@ const QuotationManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
-                        {quotation.status}
+                        {getStatusDisplayName(quotation.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -633,7 +640,7 @@ const QuotationManagement: React.FC = () => {
                     </div>
                   </div>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
-                    {quotation.status}
+                    {getStatusDisplayName(quotation.status)}
                   </span>
                 </div>
 
