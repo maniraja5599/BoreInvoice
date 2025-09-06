@@ -5,6 +5,7 @@ import {
   UsersIcon,
   DocumentArrowDownIcon,
   CalculatorIcon,
+  ClipboardDocumentListIcon,
   CreditCardIcon,
   DocumentTextIcon,
   Cog6ToothIcon,
@@ -29,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Invoices', href: '/invoices', icon: DocumentArrowDownIcon },
     { name: 'Reminders', href: '/reminders', icon: BellIcon },
     { name: 'Slab Rates', href: '/slab-rates', icon: CalculatorIcon },
+    { name: 'Quotations', href: '/quotations', icon: ClipboardDocumentListIcon },
     { name: 'Payments', href: '/payments', icon: CreditCardIcon },
     { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
@@ -64,6 +66,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         active: 'text-orange-600',
         inactive: 'text-orange-400',
         hover: 'group-hover:text-orange-500'
+      },
+      'Quotations': {
+        active: 'text-purple-600',
+        inactive: 'text-purple-400',
+        hover: 'group-hover:text-purple-500'
       },
       'Payments': {
         active: 'text-yellow-600',
