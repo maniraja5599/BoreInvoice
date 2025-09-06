@@ -104,12 +104,13 @@ const CustomerManagement: React.FC = () => {
     // Add loading state
     setSubmitting(true);
 
+    // Convert string date to Date object and prepare data (outside try block)
+    const customerData = {
+      ...formData,
+      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined
+    };
+
     try {
-      // Convert string date to Date object and prepare data
-      const customerData = {
-        ...formData,
-        dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined
-      };
 
       if (editingCustomer) {
         // Update existing customer
