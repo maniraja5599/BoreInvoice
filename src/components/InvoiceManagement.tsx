@@ -10,7 +10,11 @@ import {
   MapPinIcon,
   EyeIcon,
   Cog6ToothIcon,
-  PencilIcon
+  PencilIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  PhoneIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import { ServiceInvoice, Customer, InvoiceItem, ServiceDetails } from '../types';
 import { customerService } from '../services/borewellService';
@@ -25,6 +29,7 @@ const InvoiceManagement: React.FC = () => {
   const [filteredInvoices, setFilteredInvoices] = useState<ServiceInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table'); // Default to table view
   const [showModal, setShowModal] = useState(false);
   const [showEnhancedForm, setShowEnhancedForm] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<ServiceInvoice | null>(null);
@@ -272,6 +277,11 @@ const InvoiceManagement: React.FC = () => {
   useEffect(() => {
     loadData();
     loadSlabRateConfig();
+    // Load saved view preference, default to table view
+    const savedViewMode = localStorage.getItem('invoiceViewMode');
+    if (savedViewMode === 'table' || savedViewMode === 'grid') {
+      setViewMode(savedViewMode);
+    }
   }, []);
 
   // Global ESC handler to close any open panels in this screen
@@ -455,6 +465,19 @@ const InvoiceManagement: React.FC = () => {
     });
     setFilteredInvoices(filtered);
   }, [invoices, searchTerm]);
+
+  const handleViewModeChange = (mode: 'grid' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem('invoiceViewMode', mode);
+  };
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   const loadData = () => {
     try {
@@ -1493,7 +1516,33 @@ const InvoiceManagement: React.FC = () => {
             Create and manage service invoices with PDF export and WhatsApp sharing
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+          {/* View Toggle */}
+          <div className="inline-flex rounded-md shadow-sm">
+            <button
+              onClick={() => handleViewModeChange('grid')}
+              className={`relative inline-flex items-center px-3 py-2 rounded-l-md border text-sm font-medium ${
+                viewMode === 'grid'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+              title="Grid View"
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleViewModeChange('table')}
+              className={`relative inline-flex items-center px-3 py-2 rounded-r-md border-t border-r border-b text-sm font-medium ${
+                viewMode === 'table'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+              title="Table View"
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </div>
+
           <button
             onClick={() => window.location.href = '/slab-rates'}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -1532,7 +1581,7 @@ const InvoiceManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Invoices Grid */}
+      {/* Invoices Display */}
       {filteredInvoices.length === 0 ? (
         <div className="text-center py-12">
           <div className="mx-auto h-12 w-12 text-gray-400">
@@ -1554,15 +1603,165 @@ const InvoiceManagement: React.FC = () => {
             </div>
           )}
         </div>
+      ) : viewMode === 'table' ? (
+        /* Table View */
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Invoice Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service Location
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {invoice.customer.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{invoice.customer.name}</div>
+                          {invoice.customer.phoneNumber && (
+                            <div className="flex items-center text-sm text-gray-500">
+                              <PhoneIcon className="h-3 w-3 mr-1" />
+                              {invoice.customer.phoneNumber}
+                            </div>
+                          )}
+                          {invoice.customer.email && (
+                            <div className="flex items-center text-sm text-gray-500">
+                              <EnvelopeIcon className="h-3 w-3 mr-1" />
+                              {invoice.customer.email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium">{invoice.invoiceNumber}</div>
+                        <div className="text-gray-500">
+                          Service: {invoice.serviceDetails.serviceType}
+                        </div>
+                        <div className="text-gray-500">
+                          Due: {formatDate(new Date(invoice.dueDate))}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        <div className="flex items-start">
+                          <MapPinIcon className="h-4 w-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                          <span className="break-words">{invoice.serviceDetails.location}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium flex items-center">
+                          <CurrencyRupeeIcon className="h-4 w-4 mr-1 text-gray-400" />
+                          ₹{invoice.totalAmount.toFixed(2)}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                        {formatDate(new Date(invoice.serviceDetails.serviceDate))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-1">
+                        <button
+                          onClick={() => setViewingInvoice(invoice)}
+                          className="text-indigo-600 hover:text-indigo-900 p-1"
+                          title="View invoice"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => generatePDF(invoice)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Download PDF"
+                        >
+                          <DocumentArrowDownIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => shareToWhatsApp(invoice)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          title="Share to WhatsApp"
+                        >
+                          <ShareIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openEdit(invoice)}
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="Edit invoice"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this invoice?')) {
+                              const updatedInvoices = invoices.filter(i => i.id !== invoice.id);
+                              setInvoices(updatedInvoices);
+                              localStorage.setItem('anjaneya_invoices', JSON.stringify(updatedInvoices));
+                              toast.success('Invoice deleted successfully');
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete invoice"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
+        /* Grid View */
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredInvoices.map((invoice) => (
             <div key={invoice.id} className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{invoice.invoiceNumber}</h3>
-                    <p className="text-sm text-gray-500">{invoice.customer.name}</p>
+                    <h3 className="text-lg font-medium text-gray-900">{invoice.customer.name}</h3>
+                    <p className="text-sm text-gray-500">{invoice.invoiceNumber}</p>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
                     {invoice.status}
@@ -1571,22 +1770,35 @@ const InvoiceManagement: React.FC = () => {
                 
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center text-sm text-gray-600">
+                    <PhoneIcon className="h-4 w-4 mr-2" />
+                    {invoice.customer.phoneNumber}
+                  </div>
+                  {invoice.customer.email && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <EnvelopeIcon className="h-4 w-4 mr-2" />
+                      {invoice.customer.email}
+                    </div>
+                  )}
+                  <div className="flex items-center text-sm text-gray-600">
                     <MapPinIcon className="h-4 w-4 mr-2" />
                     {invoice.serviceDetails.location}
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <CalendarIcon className="h-4 w-4 mr-2" />
-                    {new Date(invoice.serviceDetails.serviceDate).toLocaleDateString()}
+                    {formatDate(new Date(invoice.serviceDetails.serviceDate))}
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <CurrencyRupeeIcon className="h-4 w-4 mr-2" />
                     ₹{invoice.totalAmount.toFixed(2)}
                   </div>
+                  <div className="text-sm text-gray-600">
+                    Service: {invoice.serviceDetails.serviceType}
+                  </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
                   <div className="text-xs text-gray-500">
-                    Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                    Due: {formatDate(new Date(invoice.dueDate))}
                   </div>
                   <div className="flex space-x-2">
                     <button

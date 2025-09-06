@@ -7,7 +7,9 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   MapPinIcon,
-  UsersIcon
+  UsersIcon,
+  Squares2X2Icon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline';
 import { customerService } from '../services/borewellService';
 import { Customer } from '../types';
@@ -21,6 +23,7 @@ const CustomerManagement: React.FC = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -32,6 +35,11 @@ const CustomerManagement: React.FC = () => {
 
   useEffect(() => {
     loadCustomers();
+    // Load saved view preference
+    const savedViewMode = localStorage.getItem('customerViewMode');
+    if (savedViewMode === 'table' || savedViewMode === 'grid') {
+      setViewMode(savedViewMode);
+    }
   }, []);
 
   // ESC closes the add/edit modal on this screen
@@ -64,6 +72,19 @@ const CustomerManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewModeChange = (mode: 'grid' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem('customerViewMode', mode);
+  };
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,14 +193,6 @@ const CustomerManagement: React.FC = () => {
     });
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -198,7 +211,33 @@ const CustomerManagement: React.FC = () => {
             Manage customer information and contact details
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+          {/* View Toggle */}
+          <div className="inline-flex rounded-md shadow-sm">
+            <button
+              onClick={() => handleViewModeChange('grid')}
+              className={`relative inline-flex items-center px-3 py-2 rounded-l-md border text-sm font-medium ${
+                viewMode === 'grid'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+              title="Grid View"
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleViewModeChange('table')}
+              className={`relative inline-flex items-center px-3 py-2 rounded-r-md border-t border-r border-b text-sm font-medium ${
+                viewMode === 'table'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+              title="Table View"
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </div>
+          
           <button
             onClick={() => setShowModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -225,7 +264,7 @@ const CustomerManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Customers Grid */}
+      {/* Customers Display */}
       {filteredCustomers.length === 0 ? (
         <div className="text-center py-12">
           <div className="mx-auto h-12 w-12 text-gray-400">
@@ -247,7 +286,106 @@ const CustomerManagement: React.FC = () => {
             </div>
           )}
         </div>
+      ) : viewMode === 'table' ? (
+        /* Table View */
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Address
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Added Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {customer.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                          {customer.whatsappNumber && (
+                            <div className="text-sm text-gray-500">WhatsApp: {customer.whatsappNumber}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm text-gray-900">
+                        <PhoneIcon className="h-4 w-4 mr-2 text-gray-400" />
+                        {customer.phoneNumber}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        <div className="flex items-start">
+                          <MapPinIcon className="h-4 w-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                          <span className="break-words">{customer.address}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {customer.email ? (
+                        <div className="flex items-center">
+                          <EnvelopeIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          {customer.email}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(customer.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleEdit(customer)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Edit customer"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(customer.id)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete customer"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
+        /* Grid View */
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredCustomers.map((customer) => (
             <div key={customer.id} className="bg-white overflow-hidden shadow rounded-lg">
@@ -278,6 +416,11 @@ const CustomerManagement: React.FC = () => {
                     <div className="flex items-center text-sm text-gray-600">
                       <EnvelopeIcon className="h-4 w-4 mr-2" />
                       {customer.email}
+                    </div>
+                  )}
+                  {customer.whatsappNumber && (
+                    <div className="text-sm text-gray-600">
+                      WhatsApp: {customer.whatsappNumber}
                     </div>
                   )}
                 </div>
