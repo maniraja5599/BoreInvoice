@@ -10,8 +10,10 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
-  BeakerIcon
+  BeakerIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
+import NotificationBell from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,6 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Customers', href: '/customers', icon: UsersIcon },
     { name: 'Invoices', href: '/invoices', icon: DocumentArrowDownIcon },
+    { name: 'Reminders', href: '/reminders', icon: BellIcon },
     { name: 'Slab Rates', href: '/slab-rates', icon: CalculatorIcon },
     { name: 'Payments', href: '/payments', icon: CreditCardIcon },
     { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
@@ -51,6 +54,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         active: 'text-purple-600',
         inactive: 'text-purple-400',
         hover: 'group-hover:text-purple-500'
+      },
+      'Reminders': {
+        active: 'text-red-600',
+        inactive: 'text-red-400',
+        hover: 'group-hover:text-red-500'
       },
       'Slab Rates': {
         active: 'text-orange-600',
@@ -169,6 +177,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1"></div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <NotificationBell />
               <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" />
               <div className="flex items-center gap-x-4">
                 <span className="text-sm text-gray-700">Welcome to Anjaneya Borewells</span>

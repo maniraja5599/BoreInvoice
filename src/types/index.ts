@@ -16,6 +16,14 @@ export interface Customer {
   phoneNumber: string;
   whatsappNumber?: string;
   email?: string;
+  // Enhanced fields for user management
+  serviceTaken?: string;
+  billingStatus: 'PAID' | 'UNPAID';
+  paymentAmount: number;
+  dueDate?: Date;
+  billNumber?: string;
+  lastPaymentDate?: Date;
+  totalOutstanding: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -200,14 +208,32 @@ export interface InvoiceSettings {
 
 
 
-// Notification Types
+// Reminder System Types
+export interface Reminder {
+  id: string;
+  customerId: string;
+  customerName: string;
+  reminderDate: Date;
+  note: string;
+  isCompleted: boolean;
+  type: 'PAYMENT' | 'FOLLOW_UP' | 'MAINTENANCE' | 'GENERAL';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+}
+
+// Enhanced Notification Types
 export interface Notification {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: 'success' | 'error' | 'warning' | 'info' | 'reminder';
   title: string;
   message: string;
   timestamp: Date;
   read: boolean;
+  reminderId?: string;
+  customerId?: string;
+  actionRequired?: boolean;
 }
 
 export interface AlertSettings {
@@ -242,12 +268,42 @@ export interface ThemeState {
   toggle: () => void;
 }
 
-// Dashboard State Types
+// Enhanced Dashboard Types
 export interface DashboardState {
   totalInvoices: number;
   totalRevenue: number;
   pendingPayments: number;
   recentInvoices: ServiceInvoice[];
   notifications: Notification[];
+  activeReminders: Reminder[];
+  unpaidCustomers: Customer[];
+  paidCustomers: Customer[];
+  overdueReminders: Reminder[];
+  todaysReminders: Reminder[];
+}
+
+// Billing and Payment Types
+export interface BillingRecord {
+  id: string;
+  customerId: string;
+  billNumber: string;
+  amount: number;
+  dueDate: Date;
+  status: 'PAID' | 'UNPAID' | 'OVERDUE';
+  paymentDate?: Date;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// User Statistics
+export interface UserStats {
+  totalUsers: number;
+  paidUsers: number;
+  unpaidUsers: number;
+  overdueUsers: number;
+  totalOutstanding: number;
+  averagePayment: number;
 }
 

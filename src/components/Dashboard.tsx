@@ -9,10 +9,15 @@ import {
   EyeIcon,
   CurrencyRupeeIcon,
   CalendarIcon,
-  CalculatorIcon
+  CalculatorIcon,
+  BellIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  PhoneIcon
 } from '@heroicons/react/24/outline';
-// import { projectService } from '../services/borewellService';
-import { DashboardStats, ServiceInvoice } from '../types';
+import { reminderService, enhancedCustomerService } from '../services/borewellService';
+import { DashboardStats, ServiceInvoice, Reminder, Customer } from '../types';
 import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
@@ -26,6 +31,9 @@ const Dashboard: React.FC = () => {
     thisMonthInvoices: 0
   });
   const [recentInvoices, setRecentInvoices] = useState<ServiceInvoice[]>([]);
+  const [activeReminders, setActiveReminders] = useState<Reminder[]>([]);
+  const [unpaidCustomers, setUnpaidCustomers] = useState<Customer[]>([]);
+  const [paidCustomers, setPaidCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,6 +92,18 @@ const Dashboard: React.FC = () => {
 
       setStats(updatedStats);
       setRecentInvoices(recent);
+
+      // Load reminders and customers data
+      const todaysReminders = reminderService.getTodaysReminders();
+      const overdueReminders = reminderService.getOverdueReminders();
+      const allActiveReminders = [...todaysReminders, ...overdueReminders];
+      setActiveReminders(allActiveReminders.slice(0, 5)); // Show only 5 most recent
+
+      const unpaidCustomersList = enhancedCustomerService.getByBillingStatus('UNPAID');
+      const paidCustomersList = enhancedCustomerService.getByBillingStatus('PAID');
+      setUnpaidCustomers(unpaidCustomersList.slice(0, 5)); // Show only 5 most recent
+      setPaidCustomers(paidCustomersList.slice(0, 5)); // Show only 5 most recent
+
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -286,6 +306,156 @@ const Dashboard: React.FC = () => {
               </ul>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* New Dashboard Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Active Reminders Section */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Active Reminders</h3>
+              <Link
+                to="/reminders"
+                className="text-sm text-blue-600 hover:text-blue-900"
+              >
+                View All
+              </Link>
+            </div>
+            
+            {activeReminders.length === 0 ? (
+              <div className="text-center py-8">
+                <BellIcon className="mx-auto h-8 w-8 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">No active reminders</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {activeReminders.map((reminder) => {
+                  const isOverdue = new Date(reminder.reminderDate) < new Date();
+                  return (
+                    <div key={reminder.id} className={`p-3 rounded border ${isOverdue ? 'border-red-200 bg-red-50' : 'border-yellow-200 bg-yellow-50'}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{reminder.customerName}</p>
+                          <p className="text-sm text-gray-600 mt-1">{reminder.note}</p>
+                          <div className="flex items-center mt-2 text-xs text-gray-500">
+                            <CalendarIcon className="h-3 w-3 mr-1" />
+                            {formatDate(reminder.reminderDate)}
+                            <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${isOverdue ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}`}>
+                              {isOverdue ? 'Overdue' : 'Due Today'}
+                            </span>
+                          </div>
+                        </div>
+                        {isOverdue && <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Unpaid Users Section */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Unpaid Users</h3>
+              <Link
+                to="/customers"
+                className="text-sm text-blue-600 hover:text-blue-900"
+              >
+                View All
+              </Link>
+            </div>
+            
+            {unpaidCustomers.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircleIcon className="mx-auto h-8 w-8 text-green-400" />
+                <p className="mt-2 text-sm text-gray-500">All customers paid!</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {unpaidCustomers.map((customer) => {
+                  const isOverdue = customer.dueDate && new Date(customer.dueDate) < new Date();
+                  return (
+                    <div key={customer.id} className={`p-3 rounded border ${isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{customer.name}</p>
+                          <div className="flex items-center mt-1 text-sm text-gray-600">
+                            <PhoneIcon className="h-3 w-3 mr-1" />
+                            {customer.phoneNumber}
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-sm font-medium text-red-600">
+                              ₹{customer.totalOutstanding.toLocaleString()}
+                            </span>
+                            {customer.dueDate && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${isOverdue ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                Due: {formatDate(customer.dueDate)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isOverdue && <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Paid Users Section */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Paid Users</h3>
+              <Link
+                to="/customers"
+                className="text-sm text-blue-600 hover:text-blue-900"
+              >
+                View All
+              </Link>
+            </div>
+            
+            {paidCustomers.length === 0 ? (
+              <div className="text-center py-8">
+                <UsersIcon className="mx-auto h-8 w-8 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">No paid customers yet</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {paidCustomers.map((customer) => (
+                  <div key={customer.id} className="p-3 rounded border border-green-200 bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{customer.name}</p>
+                        <div className="flex items-center mt-1 text-sm text-gray-600">
+                          <PhoneIcon className="h-3 w-3 mr-1" />
+                          {customer.phoneNumber}
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm font-medium text-green-600">
+                            ₹{customer.paymentAmount.toLocaleString()}
+                          </span>
+                          {customer.lastPaymentDate && (
+                            <span className="text-xs text-gray-500">
+                              Paid: {formatDate(customer.lastPaymentDate)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

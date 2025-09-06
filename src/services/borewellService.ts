@@ -3,7 +3,10 @@ import {
   BorewellDetails, 
   Payment, 
   ServiceReport, 
-  DashboardStats
+  DashboardStats,
+  Reminder,
+  BillingRecord,
+  Notification
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,7 +16,10 @@ const STORAGE_KEYS = {
   BOREWELLS: 'anjaneya_borewells',
   PAYMENTS: 'anjaneya_payments',
   PROJECTS: 'anjaneya_projects',
-  REPORTS: 'anjaneya_reports'
+  REPORTS: 'anjaneya_reports',
+  REMINDERS: 'anjaneya_reminders',
+  BILLING_RECORDS: 'anjaneya_billing_records',
+  NOTIFICATIONS: 'anjaneya_notifications'
 };
 
 // Helper functions for localStorage
@@ -263,5 +269,275 @@ export const reportService = {
     if (filtered.length === reports.length) return false;
     saveToStorage(STORAGE_KEYS.REPORTS, filtered);
     return true;
+  }
+};
+
+// Reminder Service
+export const reminderService = {
+  getAll: (): Reminder[] => {
+    return getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+  },
+
+  getById: (id: string): Reminder | undefined => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    return reminders.find(r => r.id === id);
+  },
+
+  getByCustomerId: (customerId: string): Reminder[] => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    return reminders.filter(r => r.customerId === customerId);
+  },
+
+  getTodaysReminders: (): Reminder[] => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return reminders.filter(reminder => {
+      const reminderDate = new Date(reminder.reminderDate);
+      reminderDate.setHours(0, 0, 0, 0);
+      return reminderDate.getTime() === today.getTime() && !reminder.isCompleted;
+    });
+  },
+
+  getOverdueReminders: (): Reminder[] => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return reminders.filter(reminder => {
+      const reminderDate = new Date(reminder.reminderDate);
+      reminderDate.setHours(0, 0, 0, 0);
+      return reminderDate.getTime() < today.getTime() && !reminder.isCompleted;
+    });
+  },
+
+  getActiveReminders: (): Reminder[] => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    return reminders.filter(r => !r.isCompleted);
+  },
+
+  create: (reminderData: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): Reminder => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const newReminder: Reminder = {
+      ...reminderData,
+      id: uuidv4(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    reminders.push(newReminder);
+    saveToStorage(STORAGE_KEYS.REMINDERS, reminders);
+    return newReminder;
+  },
+
+  update: (id: string, reminderData: Partial<Reminder>): Reminder | null => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const index = reminders.findIndex(r => r.id === id);
+    if (index === -1) return null;
+    
+    reminders[index] = {
+      ...reminders[index],
+      ...reminderData,
+      updatedAt: new Date()
+    };
+    saveToStorage(STORAGE_KEYS.REMINDERS, reminders);
+    return reminders[index];
+  },
+
+  markCompleted: (id: string): Reminder | null => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const index = reminders.findIndex(r => r.id === id);
+    if (index === -1) return null;
+    
+    reminders[index] = {
+      ...reminders[index],
+      isCompleted: true,
+      completedAt: new Date(),
+      updatedAt: new Date()
+    };
+    saveToStorage(STORAGE_KEYS.REMINDERS, reminders);
+    return reminders[index];
+  },
+
+  delete: (id: string): boolean => {
+    const reminders = getFromStorage<Reminder>(STORAGE_KEYS.REMINDERS);
+    const filtered = reminders.filter(r => r.id !== id);
+    if (filtered.length === reminders.length) return false;
+    saveToStorage(STORAGE_KEYS.REMINDERS, filtered);
+    return true;
+  }
+};
+
+// Notification Service
+export const notificationService = {
+  getAll: (): Notification[] => {
+    return getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+  },
+
+  getUnread: (): Notification[] => {
+    const notifications = getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+    return notifications.filter(n => !n.read);
+  },
+
+  create: (notificationData: Omit<Notification, 'id' | 'timestamp'>): Notification => {
+    const notifications = getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+    const newNotification: Notification = {
+      ...notificationData,
+      id: uuidv4(),
+      timestamp: new Date()
+    };
+    notifications.unshift(newNotification); // Add to beginning
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    return newNotification;
+  },
+
+  markAsRead: (id: string): boolean => {
+    const notifications = getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+    const index = notifications.findIndex(n => n.id === id);
+    if (index === -1) return false;
+    
+    notifications[index].read = true;
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    return true;
+  },
+
+  markAllAsRead: (): boolean => {
+    const notifications = getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+    notifications.forEach(n => n.read = true);
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    return true;
+  },
+
+  delete: (id: string): boolean => {
+    const notifications = getFromStorage<Notification>(STORAGE_KEYS.NOTIFICATIONS);
+    const filtered = notifications.filter(n => n.id !== id);
+    if (filtered.length === notifications.length) return false;
+    saveToStorage(STORAGE_KEYS.NOTIFICATIONS, filtered);
+    return true;
+  },
+
+  // Check for reminder notifications and create them
+  checkAndCreateReminderNotifications: (): Notification[] => {
+    const todaysReminders = reminderService.getTodaysReminders();
+    const overdueReminders = reminderService.getOverdueReminders();
+    const notifications: Notification[] = [];
+
+    // Create notifications for today's reminders
+    todaysReminders.forEach(reminder => {
+      const notification = notificationService.create({
+        type: 'reminder',
+        title: `Reminder: ${reminder.type.toLowerCase()} Due Today`,
+        message: `${reminder.note} - Customer: ${reminder.customerName}`,
+        read: false,
+        reminderId: reminder.id,
+        customerId: reminder.customerId,
+        actionRequired: true
+      });
+      notifications.push(notification);
+    });
+
+    // Create notifications for overdue reminders
+    overdueReminders.forEach(reminder => {
+      const daysPast = Math.floor((new Date().getTime() - new Date(reminder.reminderDate).getTime()) / (1000 * 60 * 60 * 24));
+      const notification = notificationService.create({
+        type: 'warning',
+        title: `Overdue Reminder (${daysPast} days)`,
+        message: `${reminder.note} - Customer: ${reminder.customerName}`,
+        read: false,
+        reminderId: reminder.id,
+        customerId: reminder.customerId,
+        actionRequired: true
+      });
+      notifications.push(notification);
+    });
+
+    return notifications;
+  }
+};
+
+// Enhanced Customer Service with billing features
+export const enhancedCustomerService = {
+  ...customerService,
+
+  // Migration helper to ensure customers have billing fields
+  migrateCustomers: (): void => {
+    const customers = getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+    const migratedCustomers = customers.map(customer => ({
+      ...customer,
+      serviceTaken: customer.serviceTaken || '',
+      billingStatus: customer.billingStatus || 'UNPAID' as 'PAID' | 'UNPAID',
+      paymentAmount: customer.paymentAmount || 0,
+      dueDate: customer.dueDate || undefined,
+      billNumber: customer.billNumber || '',
+      lastPaymentDate: customer.lastPaymentDate || undefined,
+      totalOutstanding: customer.totalOutstanding || 0
+    }));
+    saveToStorage(STORAGE_KEYS.CUSTOMERS, migratedCustomers);
+  },
+
+  // Override getAll to ensure migration
+  getAll: (): Customer[] => {
+    enhancedCustomerService.migrateCustomers();
+    return getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+  },
+
+  // Get customers by billing status
+  getByBillingStatus: (status: 'PAID' | 'UNPAID'): Customer[] => {
+    const customers = getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+    return customers.filter(c => c.billingStatus === status);
+  },
+
+  // Get overdue customers
+  getOverdueCustomers: (): Customer[] => {
+    const customers = getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+    const today = new Date();
+    return customers.filter(c => 
+      c.billingStatus === 'UNPAID' && 
+      c.dueDate && 
+      new Date(c.dueDate) < today
+    );
+  },
+
+  // Update billing status
+  updateBillingStatus: (id: string, status: 'PAID' | 'UNPAID', paymentData?: {
+    paymentAmount?: number;
+    paymentDate?: Date;
+    billNumber?: string;
+  }): Customer | null => {
+    const customers = getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+    const index = customers.findIndex(c => c.id === id);
+    if (index === -1) return null;
+    
+    customers[index] = {
+      ...customers[index],
+      billingStatus: status,
+      ...(paymentData && {
+        paymentAmount: paymentData.paymentAmount || customers[index].paymentAmount,
+        lastPaymentDate: paymentData.paymentDate,
+        billNumber: paymentData.billNumber || customers[index].billNumber,
+        totalOutstanding: status === 'PAID' ? 0 : customers[index].totalOutstanding
+      }),
+      updatedAt: new Date()
+    };
+    saveToStorage(STORAGE_KEYS.CUSTOMERS, customers);
+    return customers[index];
+  },
+
+  // Get customer statistics
+  getStats: () => {
+    const customers = getFromStorage<Customer>(STORAGE_KEYS.CUSTOMERS);
+    const paidCustomers = customers.filter(c => c.billingStatus === 'PAID');
+    const unpaidCustomers = customers.filter(c => c.billingStatus === 'UNPAID');
+    const overdueCustomers = enhancedCustomerService.getOverdueCustomers();
+    
+    return {
+      totalUsers: customers.length,
+      paidUsers: paidCustomers.length,
+      unpaidUsers: unpaidCustomers.length,
+      overdueUsers: overdueCustomers.length,
+      totalOutstanding: unpaidCustomers.reduce((sum, c) => sum + c.totalOutstanding, 0),
+      averagePayment: customers.length > 0 ? 
+        customers.reduce((sum, c) => sum + c.paymentAmount, 0) / customers.length : 0
+    };
   }
 };

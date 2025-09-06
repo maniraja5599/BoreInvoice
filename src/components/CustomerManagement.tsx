@@ -11,7 +11,7 @@ import {
   Squares2X2Icon,
   TableCellsIcon
 } from '@heroicons/react/24/outline';
-import { customerService } from '../services/borewellService';
+import { enhancedCustomerService } from '../services/borewellService';
 import { Customer } from '../types';
 import toast from 'react-hot-toast';
 
@@ -30,7 +30,13 @@ const CustomerManagement: React.FC = () => {
     address: '',
     phoneNumber: '',
     whatsappNumber: '',
-    email: ''
+    email: '',
+    serviceTaken: '',
+    billingStatus: 'UNPAID' as 'PAID' | 'UNPAID',
+    paymentAmount: 0,
+    dueDate: '',
+    billNumber: '',
+    totalOutstanding: 0
   });
 
   useEffect(() => {
@@ -64,7 +70,7 @@ const CustomerManagement: React.FC = () => {
 
   const loadCustomers = () => {
     try {
-      const allCustomers = customerService.getAll();
+      const allCustomers = enhancedCustomerService.getAll();
       setCustomers(allCustomers);
       setFilteredCustomers(allCustomers);
     } catch (error) {
@@ -101,7 +107,7 @@ const CustomerManagement: React.FC = () => {
     try {
       if (editingCustomer) {
         // Update existing customer
-        customerService.update(editingCustomer.id, formData);
+        enhancedCustomerService.update(editingCustomer.id, formData);
         toast.success('Customer updated successfully');
       } else {
         // Create new customer with fetch API call
@@ -130,7 +136,7 @@ const CustomerManagement: React.FC = () => {
         console.log('Customer created successfully:', result);
 
         // Also save to local storage as fallback
-        customerService.create(formData);
+        enhancedCustomerService.create(formData);
         toast.success('Customer added successfully');
       }
       
@@ -142,7 +148,7 @@ const CustomerManagement: React.FC = () => {
       // Fallback to local storage if API fails
       if (!editingCustomer) {
         try {
-          customerService.create(formData);
+          enhancedCustomerService.create(formData);
           toast.success('Customer added successfully (saved locally)');
           loadCustomers();
           handleCloseModal();
@@ -164,7 +170,13 @@ const CustomerManagement: React.FC = () => {
       address: customer.address,
       phoneNumber: customer.phoneNumber,
       whatsappNumber: customer.whatsappNumber || '',
-      email: customer.email || ''
+      email: customer.email || '',
+      serviceTaken: customer.serviceTaken || '',
+      billingStatus: customer.billingStatus,
+      paymentAmount: customer.paymentAmount,
+      dueDate: customer.dueDate ? new Date(customer.dueDate).toISOString().split('T')[0] : '',
+      billNumber: customer.billNumber || '',
+      totalOutstanding: customer.totalOutstanding
     });
     setShowModal(true);
   };
@@ -172,7 +184,7 @@ const CustomerManagement: React.FC = () => {
   const handleDelete = (customerId: string) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
       try {
-        customerService.delete(customerId);
+        enhancedCustomerService.delete(customerId);
         toast.success('Customer deleted successfully');
         loadCustomers();
       } catch (error) {
@@ -189,7 +201,13 @@ const CustomerManagement: React.FC = () => {
       address: '',
       phoneNumber: '',
       whatsappNumber: '',
-      email: ''
+      email: '',
+      serviceTaken: '',
+      billingStatus: 'UNPAID',
+      paymentAmount: 0,
+      dueDate: '',
+      billNumber: '',
+      totalOutstanding: 0
     });
   };
 
