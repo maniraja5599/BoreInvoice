@@ -715,71 +715,12 @@ const QuotationManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Enhanced Invoice Form Modal */}
+      {/* Enhanced Invoice Form Modal - Direct usage without wrapper */}
       {showEnhancedForm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div 
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
-              aria-hidden="true"
-              onClick={() => setShowEnhancedForm(false)}
-            />
-            
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal panel */}
-            <div className="relative inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full sm:p-6 z-10">
-              {/* Modal header */}
-              <div className="absolute top-0 right-0 pt-4 pr-4">
-                <button
-                  type="button"
-                  className="bg-white rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  onClick={() => setShowEnhancedForm(false)}
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Modal content */}
-              <div className="sm:flex sm:items-start">
-                <div className="w-full">
-                  <div className="mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Create New Quotation
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Fill in the details below to create a new quotation for borewell services.
-                    </p>
-                  </div>
-                  
-                  <div className="mt-4">
-                    {/* Debug: Show a simple test to ensure modal is working */}
-                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-sm text-blue-800">
-                        Modal is working! The quotation form will appear here.
-                      </p>
-                      <button 
-                        onClick={() => setShowEnhancedForm(false)}
-                        className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded"
-                      >
-                        Close Test Modal
-                      </button>
-                    </div>
-                    <EnhancedInvoiceForm
-                      onClose={() => setShowEnhancedForm(false)}
-                      onSave={onQuotationCreated}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EnhancedInvoiceForm
+          onClose={() => setShowEnhancedForm(false)}
+          onSave={onQuotationCreated}
+        />
       )}
 
       {/* Edit Modal */}
