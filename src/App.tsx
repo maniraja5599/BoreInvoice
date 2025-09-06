@@ -10,7 +10,7 @@ import PaymentManagement from './components/PaymentManagement';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import ReminderManagement from './components/ReminderManagement';
-import QuotationCreator from './components/QuotationCreator';
+import QuotationManagement from './components/QuotationManagement';
 import NotificationProvider from './components/NotificationProvider';
 import './index.css';
 
@@ -27,7 +27,7 @@ function App() {
               <Route path="/invoices" element={<InvoiceManagement />} />
               <Route path="/reminders" element={<ReminderManagement />} />
               <Route path="/slab-rates" element={<SlabRateConfiguration />} />
-              <Route path="/quotations" element={<QuotationCreator />} />
+              <Route path="/quotations" element={<QuotationManagement />} />
               <Route path="/payments" element={<PaymentManagement />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
