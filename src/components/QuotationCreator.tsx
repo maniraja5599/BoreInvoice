@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { customerService, borewellService } from '../services/borewellService';
+import { customerService } from '../services/borewellService';
+import { slabRateService } from '../services/slabRateService';
 import { Customer, SlabRate } from '../types';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -125,7 +126,7 @@ const QuotationCreator: React.FC = () => {
   const loadData = async () => {
     try {
       const customerData = customerService.getAll();
-      const slabData = borewellService.getSlabRates();
+      const slabData = slabRateService.getAll();
       setCustomers(customerData);
       setSlabRates(slabData);
     } catch (error) {
