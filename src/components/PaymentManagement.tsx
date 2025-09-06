@@ -1,93 +1,268 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  TrashIcon,
+import { enhancedCustomerService } from '../services/borewellService';
+import { Customer } from '../types';
+import toast from 'react-hot-toast';
+import {
   MagnifyingGlassIcon,
   FunnelIcon,
-  CreditCardIcon
+  ChevronUpIcon,
+  ChevronDownIcon,
+  CalendarDaysIcon,
+  CurrencyRupeeIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  ChevronUpDownIcon
 } from '@heroicons/react/24/outline';
-import { paymentService, customerService, borewellService } from '../services/borewellService';
-import { Payment, Customer, BorewellDetails } from '../types';
-import toast from 'react-hot-toast';
+
+type SortField = 'name' | 'paymentAmount' | 'totalOutstanding' | 'dueDate' | 'lastPaymentDate' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
+type PaymentFilter = 'all' | 'paid' | 'unpaid' | 'overdue';
+
+interface SortConfig {
+  field: SortField;
+  direction: SortDirection;
+}
+
+interface PaymentStats {
+  totalCustomers: number;
+  paidCustomers: number;
+  unpaidCustomers: number;
+  overdueCustomers: number;
+  totalReceived: number;
+  totalPending: number;
+  totalOverdue: number;
+}
 
 const PaymentManagement: React.FC = () => {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [borewells, setBorewells] = useState<BorewellDetails[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('ALL');
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([
+    { field: 'name', direction: 'asc' }
+  ]);
+  const [stats, setStats] = useState<PaymentStats>({
+    totalCustomers: 0,
+    paidCustomers: 0,
+    unpaidCustomers: 0,
+    overdueCustomers: 0,
+    totalReceived: 0,
+    totalPending: 0,
+    totalOverdue: 0
+  });
+
+  // Date range filtering
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: '',
+    dateType: 'dueDate' as 'dueDate' | 'lastPaymentDate' | 'createdAt'
+  });
+
+  // Amount range filtering
+  const [amountRange, setAmountRange] = useState({
+    minAmount: '',
+    maxAmount: '',
+    amountType: 'totalOutstanding' as 'totalOutstanding' | 'paymentAmount'
+  });
 
   useEffect(() => {
-    loadData();
+    loadCustomers();
   }, []);
 
   useEffect(() => {
-    let filtered = payments;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(payment => {
-        const customer = customers.find(c => c.id === payment.customerId);
-        const borewell = borewells.find(b => b.id === payment.borewellId);
-        return (
-          customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer?.phoneNumber.includes(searchTerm) ||
-          borewell?.location.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      });
-    }
-    
-    if (paymentMethodFilter !== 'ALL') {
-      filtered = filtered.filter(payment => payment.paymentMethod === paymentMethodFilter);
-    }
-    
-    setFilteredPayments(filtered);
-  }, [payments, customers, borewells, searchTerm, paymentMethodFilter]);
+    applyFiltersAndSort();
+  }, [customers, searchTerm, paymentFilter, sortConfigs, dateRange, amountRange]);
 
-  const loadData = () => {
+  const loadCustomers = async () => {
     try {
-      const allPayments = paymentService.getAll();
-      const allCustomers = customerService.getAll();
-      const allBorewells = borewellService.getAll();
-      
-      setPayments(allPayments);
-      setCustomers(allCustomers);
-      setBorewells(allBorewells);
-      setFilteredPayments(allPayments);
+      setLoading(true);
+      const customerData = enhancedCustomerService.getAll();
+      setCustomers(customerData);
+      calculateStats(customerData);
     } catch (error) {
-      toast.error('Failed to load payments');
+      console.error('Error loading customers:', error);
+      toast.error('Failed to load customers');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = (paymentId: string) => {
-    if (window.confirm('Are you sure you want to delete this payment?')) {
-      try {
-        paymentService.delete(paymentId);
-        toast.success('Payment deleted successfully');
-        loadData();
-      } catch (error) {
-        toast.error('Failed to delete payment');
-      }
-    }
+  const calculateStats = (customerData: Customer[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const paidCustomers = customerData.filter(c => c.billingStatus === 'PAID');
+    const unpaidCustomers = customerData.filter(c => c.billingStatus === 'UNPAID');
+    const overdueCustomers = customerData.filter(c => 
+      c.billingStatus === 'UNPAID' && 
+      c.dueDate && 
+      new Date(c.dueDate) < today
+    );
+
+    const totalReceived = paidCustomers.reduce((sum, c) => sum + (c.paymentAmount || 0), 0);
+    const totalPending = unpaidCustomers.reduce((sum, c) => sum + (c.totalOutstanding || 0), 0);
+    const totalOverdue = overdueCustomers.reduce((sum, c) => sum + (c.totalOutstanding || 0), 0);
+
+    setStats({
+      totalCustomers: customerData.length,
+      paidCustomers: paidCustomers.length,
+      unpaidCustomers: unpaidCustomers.length,
+      overdueCustomers: overdueCustomers.length,
+      totalReceived,
+      totalPending,
+      totalOverdue
+    });
   };
 
-  const getPaymentMethodColor = (method: string) => {
-    switch (method) {
-      case 'CASH':
-        return 'bg-green-100 text-green-800';
-      case 'BANK_TRANSFER':
-        return 'bg-blue-100 text-blue-800';
-      case 'CHEQUE':
-        return 'bg-purple-100 text-purple-800';
-      case 'UPI':
-        return 'bg-orange-100 text-orange-800';
-      case 'CARD':
-        return 'bg-indigo-100 text-indigo-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const applyFiltersAndSort = () => {
+    let filtered = [...customers];
+
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(customer =>
+        customer.name.toLowerCase().includes(term) ||
+        customer.phoneNumber.includes(term) ||
+        customer.email?.toLowerCase().includes(term) ||
+        customer.address.toLowerCase().includes(term) ||
+        customer.billNumber?.toLowerCase().includes(term)
+      );
     }
+
+    // Payment status filter
+    if (paymentFilter !== 'all') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      filtered = filtered.filter(customer => {
+        switch (paymentFilter) {
+          case 'paid':
+            return customer.billingStatus === 'PAID';
+          case 'unpaid':
+            return customer.billingStatus === 'UNPAID';
+          case 'overdue':
+            return customer.billingStatus === 'UNPAID' && 
+                   customer.dueDate && 
+                   new Date(customer.dueDate) < today;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Date range filter
+    if (dateRange.startDate || dateRange.endDate) {
+      filtered = filtered.filter(customer => {
+        const dateValue = customer[dateRange.dateType];
+        if (!dateValue) return false;
+
+        const customerDate = new Date(dateValue);
+        const startDate = dateRange.startDate ? new Date(dateRange.startDate) : new Date('1900-01-01');
+        const endDate = dateRange.endDate ? new Date(dateRange.endDate) : new Date('2100-12-31');
+
+        return customerDate >= startDate && customerDate <= endDate;
+      });
+    }
+
+    // Amount range filter
+    if (amountRange.minAmount || amountRange.maxAmount) {
+      filtered = filtered.filter(customer => {
+        const amount = customer[amountRange.amountType] || 0;
+        const minAmount = amountRange.minAmount ? parseFloat(amountRange.minAmount) : 0;
+        const maxAmount = amountRange.maxAmount ? parseFloat(amountRange.maxAmount) : Infinity;
+
+        return amount >= minAmount && amount <= maxAmount;
+      });
+    }
+
+    // Multiple sorting
+    if (sortConfigs.length > 0) {
+      filtered.sort((a, b) => {
+        for (const { field, direction } of sortConfigs) {
+          let aValue = a[field];
+          let bValue = b[field];
+
+          // Handle different data types
+          if (field === 'dueDate' || field === 'lastPaymentDate' || field === 'createdAt') {
+            aValue = aValue ? new Date(aValue).getTime() : 0;
+            bValue = bValue ? new Date(bValue).getTime() : 0;
+          } else if (field === 'paymentAmount' || field === 'totalOutstanding') {
+            aValue = aValue || 0;
+            bValue = bValue || 0;
+          } else if (typeof aValue === 'string') {
+            aValue = aValue.toLowerCase();
+            bValue = (bValue as string).toLowerCase();
+          }
+
+          if (aValue < bValue) {
+            return direction === 'asc' ? -1 : 1;
+          }
+          if (aValue > bValue) {
+            return direction === 'asc' ? 1 : -1;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setFilteredCustomers(filtered);
+  };
+
+  const handleSort = (field: SortField) => {
+    setSortConfigs(prevConfigs => {
+      const existingIndex = prevConfigs.findIndex(config => config.field === field);
+      
+      if (existingIndex >= 0) {
+        // If field already exists, toggle direction or remove if it's desc
+        const newConfigs = [...prevConfigs];
+        if (newConfigs[existingIndex].direction === 'asc') {
+          newConfigs[existingIndex].direction = 'desc';
+        } else {
+          newConfigs.splice(existingIndex, 1);
+        }
+        return newConfigs;
+      } else {
+        // Add new sort field
+        return [...prevConfigs, { field, direction: 'asc' }];
+      }
+    });
+  };
+
+  const getSortIcon = (field: SortField) => {
+    const config = sortConfigs.find(c => c.field === field);
+    if (!config) return <ChevronUpDownIcon className="h-4 w-4 text-gray-400" />;
+    
+    return config.direction === 'asc' 
+      ? <ChevronUpIcon className="h-4 w-4 text-blue-500" />
+      : <ChevronDownIcon className="h-4 w-4 text-blue-500" />;
+  };
+
+  const getSortBadge = (field: SortField) => {
+    const index = sortConfigs.findIndex(c => c.field === field);
+    if (index === -1) return null;
+    
+    return (
+      <span className="ml-1 inline-flex items-center justify-center w-4 h-4 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+        {index + 1}
+      </span>
+    );
+  };
+
+  const clearAllSorts = () => {
+    setSortConfigs([]);
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setPaymentFilter('all');
+    setDateRange({ startDate: '', endDate: '', dateType: 'dueDate' });
+    setAmountRange({ minAmount: '', maxAmount: '', amountType: 'totalOutstanding' });
+    setSortConfigs([]);
   };
 
   const formatCurrency = (amount: number) => {
@@ -99,7 +274,8 @@ const PaymentManagement: React.FC = () => {
     }).format(amount);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
@@ -107,20 +283,58 @@ const PaymentManagement: React.FC = () => {
     });
   };
 
-  const getCustomerName = (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId);
-    return customer?.name || 'Unknown Customer';
+  const getPaymentStatusBadge = (customer: Customer) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (customer.billingStatus === 'PAID') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <CheckCircleIcon className="w-3 h-3 mr-1" />
+          Paid
+        </span>
+      );
+    } else if (customer.dueDate && new Date(customer.dueDate) < today) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+          <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+          Overdue
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          <ClockIcon className="w-3 h-3 mr-1" />
+          Pending
+        </span>
+      );
+    }
   };
 
-  const getBorewellLocation = (borewellId: string) => {
-    const borewell = borewells.find(b => b.id === borewellId);
-    return borewell?.location || 'Unknown Location';
+  const updatePaymentStatus = async (customerId: string, status: 'PAID' | 'UNPAID') => {
+    try {
+      const customer = customers.find(c => c.id === customerId);
+      if (!customer) return;
+
+      const updateData: Partial<Customer> = {
+        billingStatus: status,
+        lastPaymentDate: status === 'PAID' ? new Date() : customer.lastPaymentDate,
+        totalOutstanding: status === 'PAID' ? 0 : customer.totalOutstanding
+      };
+
+      enhancedCustomerService.update(customerId, updateData);
+      toast.success(`Payment status updated to ${status.toLowerCase()}`);
+      loadCustomers();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -132,23 +346,24 @@ const PaymentManagement: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Track and manage all payments for borewell projects
+            Track customer payments, manage billing status, and monitor outstanding amounts
           </p>
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CreditCardIcon className="h-6 w-6 text-blue-600" />
+                <CheckCircleIcon className="h-6 w-6 text-green-400" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Payments</dt>
-                  <dd className="text-lg font-medium text-gray-900">{payments.length}</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Paid Customers</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.paidCustomers}</dd>
+                  <dd className="text-sm text-green-600">{formatCurrency(stats.totalReceived)}</dd>
                 </dl>
               </div>
             </div>
@@ -159,14 +374,13 @@ const PaymentManagement: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CreditCardIcon className="h-6 w-6 text-green-600" />
+                <ClockIcon className="h-6 w-6 text-yellow-400" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Amount</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {formatCurrency(payments.reduce((sum, p) => sum + p.amount, 0))}
-                  </dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Pending Payments</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.unpaidCustomers}</dd>
+                  <dd className="text-sm text-yellow-600">{formatCurrency(stats.totalPending)}</dd>
                 </dl>
               </div>
             </div>
@@ -177,14 +391,13 @@ const PaymentManagement: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CreditCardIcon className="h-6 w-6 text-yellow-600" />
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-400" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Advance Payments</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {payments.filter(p => p.isAdvance).length}
-                  </dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Overdue Payments</dt>
+                  <dd className="text-lg font-medium text-gray-900">{stats.overdueCustomers}</dd>
+                  <dd className="text-sm text-red-600">{formatCurrency(stats.totalOverdue)}</dd>
                 </dl>
               </div>
             </div>
@@ -195,23 +408,13 @@ const PaymentManagement: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CreditCardIcon className="h-6 w-6 text-purple-600" />
+                <CurrencyRupeeIcon className="h-6 w-6 text-blue-400" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">This Month</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {formatCurrency(
-                      payments
-                        .filter(p => {
-                          const paymentDate = new Date(p.paymentDate);
-                          const now = new Date();
-                          return paymentDate.getMonth() === now.getMonth() && 
-                                 paymentDate.getFullYear() === now.getFullYear();
-                        })
-                        .reduce((sum, p) => sum + p.amount, 0)
-                    )}
-                  </dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total Outstanding</dt>
+                  <dd className="text-lg font-medium text-gray-900">{formatCurrency(stats.totalPending)}</dd>
+                  <dd className="text-sm text-gray-600">{stats.totalCustomers} customers</dd>
                 </dl>
               </div>
             </div>
@@ -219,143 +422,297 @@ const PaymentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+      {/* Filters and Search */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="space-y-4">
+            {/* Search and Payment Status Filter */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, phone, email, address, or bill number..."
+                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
-              <input
-                type="text"
-                placeholder="Search by customer name, phone, or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
+              <div className="sm:w-48">
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="all">All Customers</option>
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-            <select
-              value={paymentMethodFilter}
-              onChange={(e) => setPaymentMethodFilter(e.target.value)}
-              className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="ALL">All Methods</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="CHEQUE">Cheque</option>
-              <option value="UPI">UPI</option>
-              <option value="CARD">Card</option>
-            </select>
-          </div>
+            {/* Date Range Filter */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date Type</label>
+                <select
+                  value={dateRange.dateType}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, dateType: e.target.value as any }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="dueDate">Due Date</option>
+                  <option value="lastPaymentDate">Last Payment</option>
+                  <option value="createdAt">Created Date</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
 
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setPaymentMethodFilter('ALL');
-              }}
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <FunnelIcon className="h-4 w-4 mr-2" />
-              Clear Filters
-            </button>
+            {/* Amount Range Filter */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount Type</label>
+                <select
+                  value={amountRange.amountType}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, amountType: e.target.value as any }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="totalOutstanding">Outstanding Amount</option>
+                  <option value="paymentAmount">Payment Amount</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={amountRange.minAmount}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, minAmount: e.target.value }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+                <input
+                  type="number"
+                  placeholder="No limit"
+                  value={amountRange.maxAmount}
+                  onChange={(e) => setAmountRange(prev => ({ ...prev, maxAmount: e.target.value }))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Filter Actions */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <button
+                onClick={clearAllFilters}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Clear All Filters
+              </button>
+              
+              {sortConfigs.length > 0 && (
+                <button
+                  onClick={clearAllSorts}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Clear All Sorts ({sortConfigs.length})
+                </button>
+              )}
+
+              <span className="text-sm text-gray-500">
+                Showing {filteredCustomers.length} of {customers.length} customers
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Payments Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {filteredPayments.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mx-auto h-12 w-12 text-gray-400">
-              <CreditCardIcon className="h-12 w-12" />
-            </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No payments</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || paymentMethodFilter !== 'ALL' ? 'No payments found matching your filters.' : 'No payments recorded yet.'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+      {/* Payment Table */}
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  onClick={() => handleSort('name')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
                     Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Project Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Method
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{getCustomerName(payment.customerId)}</div>
-                        <div className="text-sm text-gray-500">
-                          {customers.find(c => c.id === payment.customerId)?.phoneNumber}
+                    {getSortIcon('name')}
+                    {getSortBadge('name')}
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact Info
+                </th>
+                <th
+                  onClick={() => handleSort('paymentAmount')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    Payment Amount
+                    {getSortIcon('paymentAmount')}
+                    {getSortBadge('paymentAmount')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('totalOutstanding')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    Outstanding
+                    {getSortIcon('totalOutstanding')}
+                    {getSortBadge('totalOutstanding')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('dueDate')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    Due Date
+                    {getSortIcon('dueDate')}
+                    {getSortBadge('dueDate')}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort('lastPaymentDate')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    Last Payment
+                    {getSortIcon('lastPaymentDate')}
+                    {getSortBadge('lastPaymentDate')}
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredCustomers.map((customer) => (
+                <tr key={customer.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">
+                            {customer.name.charAt(0).toUpperCase()}
+                          </span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">{getBorewellLocation(payment.borewellId)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payment.amount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentMethodColor(payment.paymentMethod)}`}>
-                        {payment.paymentMethod.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        payment.isAdvance ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {payment.isAdvance ? 'Advance' : 'Regular'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(payment.paymentDate)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleDelete(payment.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete payment"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                        <div className="text-sm text-gray-500">{customer.address}</div>
+                        {customer.billNumber && (
+                          <div className="text-xs text-gray-400">Bill: {customer.billNumber}</div>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      <div className="flex items-center">
+                        <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
+                        {customer.phoneNumber}
+                      </div>
+                      {customer.email && (
+                        <div className="flex items-center mt-1">
+                          <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
+                          {customer.email}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {formatCurrency(customer.paymentAmount || 0)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className={`text-sm font-medium ${
+                      (customer.totalOutstanding || 0) > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {formatCurrency(customer.totalOutstanding || 0)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {formatDate(customer.dueDate)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {formatDate(customer.lastPaymentDate)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getPaymentStatusBadge(customer)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      {customer.billingStatus === 'UNPAID' ? (
+                        <button
+                          onClick={() => updatePaymentStatus(customer.id, 'PAID')}
+                          className="text-green-600 hover:text-green-900"
+                          title="Mark as Paid"
+                        >
+                          <CheckCircleIcon className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updatePaymentStatus(customer.id, 'UNPAID')}
+                          className="text-red-600 hover:text-red-900"
+                          title="Mark as Unpaid"
+                        >
+                          <XCircleIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredCustomers.length === 0 && (
+          <div className="text-center py-12">
+            <CurrencyRupeeIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No payments found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {customers.length === 0 
+                ? 'No customers available.' 
+                : 'Try adjusting your search or filter criteria.'
+              }
+            </p>
           </div>
         )}
       </div>
