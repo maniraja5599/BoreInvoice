@@ -267,8 +267,8 @@ const QuotationManagement: React.FC = () => {
 
     // Quotation details
     doc.text(`Quotation No: ${quotation.invoiceNumber}`, pageWidth - margin - 80, 50);
-    doc.text(`Date: ${new Date(quotation.quotationDate).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 60);
-    doc.text(`Valid Till: ${new Date(Date.now() + quotation.validityDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 70);
+    doc.text(`Date: ${new Date((quotation as any).quotationDate || quotation.invoiceDate).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 60);
+    doc.text(`Valid Till: ${new Date(Date.now() + ((quotation as any).validityDays || 30) * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 70);
 
     // Customer details
     let yPos = 100;
@@ -288,7 +288,7 @@ const QuotationManagement: React.FC = () => {
     }
 
     yPos += 20;
-    if (quotation.serviceDetails.location) {
+    if (quotation.serviceDetails && quotation.serviceDetails.location) {
       doc.text(`Service Location: ${quotation.serviceDetails.location}`, margin, yPos);
       yPos += 10;
     }
@@ -327,7 +327,7 @@ const QuotationManagement: React.FC = () => {
       '50% advance payment required',
       'Balance payment on completion',
       'GST extra as applicable',
-      `Quotation valid for ${quotation.validityDays} days`
+      `Quotation valid for ${(quotation as any).validityDays || 30} days`
     ];
 
     let termsY = finalY + 40;
