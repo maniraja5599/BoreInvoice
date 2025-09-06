@@ -187,23 +187,30 @@ const PaymentManagement: React.FC = () => {
           let aValue = a[field];
           let bValue = b[field];
 
-          // Handle different data types
+          // Handle different data types and ensure no undefined values
           if (field === 'dueDate' || field === 'lastPaymentDate' || field === 'createdAt') {
             aValue = aValue ? new Date(aValue).getTime() : 0;
             bValue = bValue ? new Date(bValue).getTime() : 0;
           } else if (field === 'paymentAmount' || field === 'totalOutstanding') {
             aValue = aValue || 0;
             bValue = bValue || 0;
-          } else if (typeof aValue === 'string') {
+          } else if (typeof aValue === 'string' && typeof bValue === 'string') {
             aValue = aValue.toLowerCase();
-            bValue = (bValue as string).toLowerCase();
+            bValue = bValue.toLowerCase();
+          } else {
+            // Handle any remaining undefined cases
+            aValue = aValue || '';
+            bValue = bValue || '';
           }
 
-          if (aValue < bValue) {
-            return direction === 'asc' ? -1 : 1;
-          }
-          if (aValue > bValue) {
-            return direction === 'asc' ? 1 : -1;
+          // Ensure both values are defined before comparison
+          if (aValue != null && bValue != null) {
+            if (aValue < bValue) {
+              return direction === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+              return direction === 'asc' ? 1 : -1;
+            }
           }
         }
         return 0;
@@ -274,7 +281,7 @@ const PaymentManagement: React.FC = () => {
     }).format(amount);
   };
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
