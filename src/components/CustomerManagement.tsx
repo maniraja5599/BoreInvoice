@@ -105,13 +105,19 @@ const CustomerManagement: React.FC = () => {
     setSubmitting(true);
 
     try {
+      // Convert string date to Date object and prepare data
+      const customerData = {
+        ...formData,
+        dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined
+      };
+
       if (editingCustomer) {
         // Update existing customer
-        enhancedCustomerService.update(editingCustomer.id, formData);
+        enhancedCustomerService.update(editingCustomer.id, customerData);
         toast.success('Customer updated successfully');
       } else {
-        // Create new customer with fetch API call
-        const customerData = {
+        // Create new customer with fetch API call - but use the prepared customerData
+        const apiCustomerData = {
           name: formData.name.trim(),
           phoneNumber: formData.phoneNumber.trim(),
           address: formData.address.trim(),
@@ -125,7 +131,7 @@ const CustomerManagement: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(customerData)
+          body: JSON.stringify(apiCustomerData)
         });
 
         if (!response.ok) {
@@ -136,7 +142,7 @@ const CustomerManagement: React.FC = () => {
         console.log('Customer created successfully:', result);
 
         // Also save to local storage as fallback
-        enhancedCustomerService.create(formData);
+        enhancedCustomerService.create(customerData);
         toast.success('Customer added successfully');
       }
       
@@ -148,7 +154,7 @@ const CustomerManagement: React.FC = () => {
       // Fallback to local storage if API fails
       if (!editingCustomer) {
         try {
-          enhancedCustomerService.create(formData);
+          enhancedCustomerService.create(customerData);
           toast.success('Customer added successfully (saved locally)');
           loadCustomers();
           handleCloseModal();

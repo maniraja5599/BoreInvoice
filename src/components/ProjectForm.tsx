@@ -83,7 +83,10 @@ const ProjectForm: React.FC = () => {
         name: newCustomerData.name.trim(),
         address: newCustomerData.address.trim(),
         phoneNumber: newCustomerData.phoneNumber.trim(),
-        email: newCustomerData.email.trim() || undefined
+        email: newCustomerData.email.trim() || undefined,
+        billingStatus: 'UNPAID' as 'PAID' | 'UNPAID',
+        paymentAmount: 0,
+        totalOutstanding: 0
       });
 
       // Add the new customer to the list and select it

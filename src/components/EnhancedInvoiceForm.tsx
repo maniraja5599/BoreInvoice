@@ -377,7 +377,13 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
     }
 
     try {
-      const customer = customerService.create(newCustomerData);
+      const customerWithBilling = {
+        ...newCustomerData,
+        billingStatus: 'UNPAID' as 'PAID' | 'UNPAID',
+        paymentAmount: 0,
+        totalOutstanding: 0
+      };
+      const customer = customerService.create(customerWithBilling);
       setCustomers([...customers, customer]);
       setFormData({ ...formData, customerId: customer.id });
       setShowNewCustomerForm(false);
