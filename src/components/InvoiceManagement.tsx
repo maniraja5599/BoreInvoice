@@ -23,6 +23,7 @@ import EnhancedInvoiceForm from './EnhancedInvoiceForm';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { processIndianPhoneNumber } from '../utils/phoneUtils';
 
 const InvoiceManagement: React.FC = () => {
   const [invoices, setInvoices] = useState<ServiceInvoice[]>([]);
@@ -1039,7 +1040,6 @@ const InvoiceManagement: React.FC = () => {
       let companyName = 'AquaFlow Solutions';
       let companyContact = '+91 98765 43210';
       let companyAddress = '123 Water Works Street, Hydro City, Karnataka - 560001';
-      let companyLogo: string | undefined;
       let companyTagline = 'Excellence in Water Solutions';
       try {
         const saved = localStorage.getItem('anjaneya_settings');
@@ -1048,7 +1048,6 @@ const InvoiceManagement: React.FC = () => {
           companyName = parsed?.company?.name || companyName;
           companyContact = parsed?.company?.contact || companyContact;
           companyAddress = parsed?.company?.address || companyAddress;
-          companyLogo = parsed?.company?.logo || parsed?.company?.logoDataUrl || companyLogo;
           companyTagline = parsed?.company?.tagline || companyTagline;
         }
       } catch {}
@@ -1409,10 +1408,20 @@ const InvoiceManagement: React.FC = () => {
   };
 
   const shareToWhatsApp = (invoice: ServiceInvoice) => {
-    const whatsappNumber = invoice.customer.whatsappNumber || invoice.customer.phoneNumber;
+    // Get customer's phone number and process it with Indian prefix
+    const phoneNumber = processIndianPhoneNumber(invoice.customer.whatsappNumber || invoice.customer.phoneNumber || '');
+    
     const message = `Hello ${invoice.customer.name},\n\nYour invoice #${invoice.invoiceNumber} for ${invoice.serviceDetails.serviceType} service is ready.\n\nTotal Amount: ₹${invoice.totalAmount.toFixed(2)}\nDue Date: ${new Date(invoice.dueDate).toLocaleDateString()}\n\nPlease contact us for payment.\n\nThank you,\nAnjaneya Borewells`;
     
-    const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    // Create WhatsApp URL with processed phone number
+    let whatsappUrl;
+    if (phoneNumber) {
+      whatsappUrl = `https://wa.me/${phoneNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+    } else {
+      // Fallback to general WhatsApp if no phone number
+      whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    }
+    
     window.open(whatsappUrl, '_blank');
   };
 
@@ -1462,41 +1471,6 @@ const InvoiceManagement: React.FC = () => {
     }
   };
 
-  const numberToWordsIndian = (num: number): string => {
-    if (isNaN(num) || num < 0) return '';
-    if (num === 0) return 'zero';
-
-    const belowTwenty = ['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
-    const tens = ['','', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
-
-    const toWords = (n: number): string => {
-      let str = '';
-      if (n > 19) {
-        str += tens[Math.floor(n / 10)] + (n % 10 ? ' ' + belowTwenty[n % 10] : '');
-      } else {
-        str += belowTwenty[n];
-      }
-      return str.trim();
-    };
-
-    const crores = Math.floor(num / 10000000);
-    num %= 10000000;
-    const lakhs = Math.floor(num / 100000);
-    num %= 100000;
-    const thousands = Math.floor(num / 1000);
-    num %= 1000;
-    const hundreds = Math.floor(num / 100);
-    const remainder = num % 100;
-
-    let words = '';
-    if (crores) words += toWords(crores) + ' crore ';
-    if (lakhs) words += toWords(lakhs) + ' lakh ';
-    if (thousands) words += toWords(thousands) + ' thousand ';
-    if (hundreds) words += belowTwenty[hundreds] + ' hundred ';
-    if (remainder) words += (words ? 'and ' : '') + toWords(remainder);
-
-    return words.replace(/\s+/g, ' ').trim();
-  };
 
   if (loading) {
     return (

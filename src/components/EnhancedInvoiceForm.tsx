@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   UserPlusIcon,
   CalculatorIcon,
-  XMarkIcon
+  XMarkIcon,
+  MagnifyingGlassIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { Customer } from '../types';
 import { customerService } from '../services/borewellService';
@@ -101,6 +103,11 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
   });
   const [calculatedRates, setCalculatedRates] = useState<any>(null);
   const [serviceTypes, setServiceTypes] = useState<string[]>([]);
+  
+  // Customer search functionality
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -131,19 +138,73 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
     email: ''
   });
 
+  const loadCustomers = () => {
+    try {
+      const allCustomers = customerService.getAll();
+      setCustomers(allCustomers);
+      setFilteredCustomers(allCustomers);
+    } catch (error) {
+      toast.error('Failed to load customers');
+    }
+  };
+
+  // Filter customers based on search term
+  const filterCustomers = useCallback((searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredCustomers(customers);
+    } else {
+      const filtered = customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phoneNumber.includes(searchTerm) ||
+        (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredCustomers(filtered);
+    }
+  }, [customers]);
+
   useEffect(() => {
     loadCustomers();
     loadSlabRateConfig();
     loadServiceTypes();
   }, []);
 
-  const loadCustomers = () => {
-    try {
-      const allCustomers = customerService.getAll();
-      setCustomers(allCustomers);
-    } catch (error) {
-      toast.error('Failed to load customers');
-    }
+  // Update filtered customers when customers list changes
+  useEffect(() => {
+    filterCustomers(customerSearchTerm);
+  }, [customers, filterCustomers, customerSearchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.customer-dropdown-container')) {
+        setShowCustomerDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle customer search
+  const handleCustomerSearch = (searchTerm: string) => {
+    setCustomerSearchTerm(searchTerm);
+    filterCustomers(searchTerm);
+    setShowCustomerDropdown(true);
+  };
+
+  // Handle customer selection
+  const handleCustomerSelect = (customer: Customer) => {
+    setFormData({ ...formData, customerId: customer.id });
+    setCustomerSearchTerm(customer.name);
+    setShowCustomerDropdown(false);
+  };
+
+  // Get selected customer details
+  const getSelectedCustomer = () => {
+    return customers.find(customer => customer.id === formData.customerId);
   };
 
   const loadSlabRateConfig = () => {
@@ -319,10 +380,6 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
     return { totalCost, breakdown };
   }, [formData.slabRateType, customSlabs]);
 
-  const calculateSlabRateByRanges = useCallback((depth: number, rates: any) => {
-    const result = calculateSlabRateWithBreakdown(depth, rates);
-    return result.totalCost;
-  }, [calculateSlabRateWithBreakdown]);
 
   const calculateRates = useCallback(() => {
     if (!slabRateConfig || formData.totalDepth <= 0) return;
@@ -368,6 +425,7 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
     calculateRates();
   }, [calculateRates]);
 
+
   const handleAddNewCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -386,7 +444,9 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
       const customer = customerService.create(customerWithBilling);
       setCustomers([...customers, customer]);
       setFormData({ ...formData, customerId: customer.id });
+      setCustomerSearchTerm(customer.name);
       setShowNewCustomerForm(false);
+      setShowCustomerDropdown(false);
       setNewCustomerData({ name: '', address: '', phoneNumber: '', whatsappNumber: '', email: '' });
       toast.success('Customer added successfully');
     } catch (error) {
@@ -447,24 +507,73 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                   <h4 className="text-md font-medium text-gray-900 border-b pb-2">Basic Information</h4>
                   
                   {/* Customer Selection */}
-                  <div>
+                  <div className="relative customer-dropdown-container">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Customer *
                     </label>
                     <div className="flex space-x-2">
-                      <select
-                        value={formData.customerId}
-                        onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">Select Customer</option>
-                        {customers.map(customer => (
-                          <option key={customer.id} value={customer.id}>
-                            {customer.name} - {customer.phoneNumber}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex-1 relative">
+                        <div className="relative">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={customerSearchTerm}
+                            onChange={(e) => handleCustomerSearch(e.target.value)}
+                            onFocus={() => setShowCustomerDropdown(true)}
+                            placeholder="Search customers by name, phone, or email..."
+                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomerDropdown(!showCustomerDropdown)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <ChevronDownIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                        
+                        {/* Customer Dropdown */}
+                        {showCustomerDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            {filteredCustomers.length === 0 ? (
+                              <div className="p-3 text-center text-sm text-gray-500">
+                                {customerSearchTerm ? 'No customers found matching your search' : 'No customers available'}
+                              </div>
+                            ) : (
+                              filteredCustomers.map((customer) => (
+                                <div
+                                  key={customer.id}
+                                  onClick={() => handleCustomerSelect(customer)}
+                                  className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-blue-50 ${
+                                    formData.customerId === customer.id ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-gray-900">{customer.name}</div>
+                                      <div className="text-sm text-gray-600">{customer.phoneNumber}</div>
+                                      {customer.email && (
+                                        <div className="text-sm text-gray-500">{customer.email}</div>
+                                      )}
+                                      {customer.address && (
+                                        <div className="text-sm text-gray-500 truncate">{customer.address}</div>
+                                      )}
+                                    </div>
+                                    {formData.customerId === customer.id && (
+                                      <div className="text-blue-600">
+                                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => setShowNewCustomerForm(true)}
@@ -474,6 +583,17 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                         <UserPlusIcon className="h-4 w-4" />
                       </button>
                     </div>
+                    
+                    {/* Selected Customer Info */}
+                    {formData.customerId && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900">Selected: </span>
+                          <span className="text-blue-700">{getSelectedCustomer()?.name}</span>
+                          <span className="text-blue-600 ml-2">({getSelectedCustomer()?.phoneNumber})</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Service Type */}
@@ -683,7 +803,11 @@ const EnhancedInvoiceForm: React.FC<EnhancedInvoiceFormProps> = ({ onClose, onSa
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Total Depth:</span>
+                      <div className="font-semibold text-blue-900">{formData.totalDepth} feet</div>
+                    </div>
                     <div>
                       <span className="text-gray-600">Slab Cost:</span>
                       <div className="font-semibold text-blue-900">₹{calculatedRates.slabCost.toLocaleString()}</div>

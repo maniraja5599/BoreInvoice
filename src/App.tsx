@@ -11,6 +11,7 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import ReminderManagement from './components/ReminderManagement';
 import QuotationManagement from './components/QuotationManagement';
+import GoogleAuthCallback from './components/GoogleAuthCallback';
 import NotificationProvider from './components/NotificationProvider';
 import './index.css';
 
@@ -29,6 +30,7 @@ function App() {
               <Route path="/slab-rates" element={<SlabRateConfiguration />} />
               <Route path="/quotations" element={<QuotationManagement />} />
               <Route path="/payments" element={<PaymentManagement />} />
+              <Route path="/google-auth-callback" element={<GoogleAuthCallback />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

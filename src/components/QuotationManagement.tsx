@@ -14,34 +14,27 @@ import {
   Squares2X2Icon,
   TableCellsIcon,
   PhoneIcon,
-  EnvelopeIcon,
-  PrinterIcon
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import { ServiceInvoice, Customer, InvoiceItem, ServiceDetails } from '../types';
-import { enhancedCustomerService } from '../services/borewellService';
+import { customerService } from '../services/borewellService';
 import { serviceTypeService } from '../services/serviceTypeService';
 import EnhancedInvoiceForm from './EnhancedInvoiceForm';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-
-// Create a type for quotations that extends ServiceInvoice
-interface Quotation extends ServiceInvoice {
-  quotationType: 'estimate' | 'formal' | 'revised';
-  validityDays: number;
-  quotationDate: Date;
-}
+import { processIndianPhoneNumber } from '../utils/phoneUtils';
 
 const QuotationManagement: React.FC = () => {
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [filteredQuotations, setFilteredQuotations] = useState<Quotation[]>([]);
+  const [quotations, setQuotations] = useState<ServiceInvoice[]>([]);
+  const [filteredQuotations, setFilteredQuotations] = useState<ServiceInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table'); // Default to table view
   const [showModal, setShowModal] = useState(false);
   const [showEnhancedForm, setShowEnhancedForm] = useState(false);
-  const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
-  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
+  const [viewingQuotation, setViewingQuotation] = useState<ServiceInvoice | null>(null);
+  const [editingQuotation, setEditingQuotation] = useState<ServiceInvoice | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDepth, setEditDepth] = useState<number>(0);
   const [editPVC7, setEditPVC7] = useState<number>(0);
@@ -53,410 +46,1575 @@ const QuotationManagement: React.FC = () => {
   const [editPVC10Rate, setEditPVC10Rate] = useState<number>(700);
   const [editCalculatedRates, setEditCalculatedRates] = useState<any>(null);
 
-  const openEdit = (quotation: Quotation) => {
+  const openEdit = (quotation: ServiceInvoice) => {
     setEditingQuotation(quotation);
-    // Extract depth and PVC from items
-    const depthItem = quotation.items.find(item => 
-      item.description.toLowerCase().includes('boring') || 
-      item.description.toLowerCase().includes('drilling')
-    );
-    const pvc7Item = quotation.items.find(item => 
-      item.description.toLowerCase().includes('7') && 
-      item.description.toLowerCase().includes('pvc')
-    );
-    const pvc10Item = quotation.items.find(item => 
-      item.description.toLowerCase().includes('10') && 
-      item.description.toLowerCase().includes('pvc')
-    );
-
-    setEditDepth(depthItem?.quantity || 0);
-    setEditPVC7(pvc7Item?.quantity || 0);
-    setEditPVC10(pvc10Item?.quantity || 0);
+    // derive depth and pvc from items
+    const items = quotation.items || [];
+    const depth = items
+      .filter(i => (i.type === 'service') && (i.description || '').toLowerCase().includes('drilling'))
+      .reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const pvc7 = items
+      .filter(i => (i.description || '').includes('7" PVC'))
+      .reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const pvc10 = items
+      .filter(i => (i.description || '').includes('10" PVC'))
+      .reduce((sum, i) => sum + (i.quantity || 0), 0);
+    const bataItem = items.find(i => (i.description || '').toUpperCase() === 'BATA');
+    setEditDepth(depth || 0);
+    setEditPVC7(pvc7 || 0);
+    setEditPVC10(pvc10 || 0);
+    setEditBata((bataItem?.rate as number) || (bataItem?.amount as number) || 2000);
     setShowEditModal(true);
   };
 
-  const updateQuotation = () => {
-    if (!editingQuotation) return;
-
-    const updatedQuotation = {
-      ...editingQuotation,
-      items: [
-        {
-          id: 'boring',
-          description: `Borewell Drilling (${editDepth} feet)`,
-          quantity: editDepth,
-          unit: 'feet',
-          rate: editStartingRate,
-          amount: editDepth * editStartingRate,
-          type: 'service' as const
-        },
-        ...(editPVC7 > 0 ? [{
-          id: 'pvc7',
-          description: '7" PVC Casing Pipe',
-          quantity: editPVC7,
-          unit: 'feet', 
-          rate: editPVC7Rate,
-          amount: editPVC7 * editPVC7Rate,
-          type: 'material' as const
-        }] : []),
-        ...(editPVC10 > 0 ? [{
-          id: 'pvc10',
-          description: '10" PVC Casing Pipe',
-          quantity: editPVC10,
-          unit: 'feet',
-          rate: editPVC10Rate,
-          amount: editPVC10 * editPVC10Rate,
-          type: 'material' as const
-        }] : []),
-        ...(editBata > 0 ? [{
-          id: 'bata',
-          description: 'Labour & Transportation',
-          quantity: 1,
-          unit: 'lot',
-          rate: editBata,
-          amount: editBata,
-          type: 'labor' as const
-        }] : [])
-      ] as InvoiceItem[]
-    };
-
-    // Recalculate totals
-    const subtotal = updatedQuotation.items.reduce((sum, item) => sum + item.amount, 0);
-    const taxAmount = subtotal * 0.18;
-    const totalAmount = subtotal + taxAmount;
-
-    updatedQuotation.subtotal = subtotal;
-    updatedQuotation.taxAmount = taxAmount;
-    updatedQuotation.totalAmount = totalAmount;
-    updatedQuotation.updatedAt = new Date();
-
-    // Update in localStorage
-    const savedQuotations = getQuotationsFromStorage();
-    const updatedQuotations = savedQuotations.map(q => 
-      q.id === updatedQuotation.id ? updatedQuotation : q
-    );
-    saveQuotationsToStorage(updatedQuotations);
-
-    // Update state
-    setQuotations(updatedQuotations);
-    setShowEditModal(false);
-    setEditingQuotation(null);
-    toast.success('Quotation updated successfully');
+  // Auto-calculation functions for quick edit
+  const generateDefaultRatesForEdit = (startRate: number, type: 'type1' | 'type2' | 'type3') => {
+    const rates: { [key: string]: number } = {};
+    
+    if (type === 'type2') {
+      // Enhanced Slab #2 with 100-foot increments
+      const type2Ranges = [
+        'rate1_100', 'rate101_200', 'rate201_300', 'rate301_400', 'rate401_500',
+        'rate501_600', 'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000',
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      const type2Increments = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
+      
+      type2Ranges.forEach((key, index) => {
+        rates[key] = startRate + type2Increments[index];
+      });
+    } else {
+      // Pattern for type1 and type3: 1-300ft calc +0, 301-400ft calc +5, 401-500ft calc +10, etc.
+      const increments = [0, 5, 10, 20, 30, 40, 50, 60];
+      
+      const rateKeys = [
+        'rate1_300', 'rate301_400', 'rate401_500', 'rate501_600',
+        'rate601_700', 'rate701_800', 'rate801_900', 'rate901_1000'
+      ];
+      
+      rateKeys.forEach((key, index) => {
+        rates[key] = startRate + increments[index];
+      });
+      
+      const baseFor1001Plus = startRate + 60;
+      const additionalRanges = [
+        'rate1001_1100', 'rate1101_1200', 'rate1201_1300', 'rate1301_1400',
+        'rate1401_1500', 'rate1501_1600', 'rate1600_plus'
+      ];
+      
+      additionalRanges.forEach((key, index) => {
+        rates[key] = baseFor1001Plus + ((index + 1) * 100);
+      });
+      
+      if (type === 'type3') {
+        rates['rate1_500'] = startRate;
+      }
+    }
+    
+    return rates;
   };
 
-  // Storage functions
-  const getQuotationsFromStorage = (): Quotation[] => {
-    try {
-      const stored = localStorage.getItem('anjaneya_quotations');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error reading quotations from storage:', error);
-      return [];
+  const calculateSlabRateByRangesForEdit = (depth: number, rates: any, slabType: string) => {
+    let totalCost = 0;
+    let remainingDepth = depth;
+    
+    const ranges = [
+      { key: 'rate1_300', from: 0, to: 300 },
+      { key: 'rate301_400', from: 301, to: 400 },
+      { key: 'rate401_500', from: 401, to: 500 },
+      { key: 'rate501_600', from: 501, to: 600 },
+      { key: 'rate601_700', from: 601, to: 700 },
+      { key: 'rate701_800', from: 701, to: 800 },
+      { key: 'rate801_900', from: 801, to: 900 },
+      { key: 'rate901_1000', from: 901, to: 1000 },
+      { key: 'rate1001_1100', from: 1001, to: 1100 },
+      { key: 'rate1101_1200', from: 1101, to: 1200 },
+      { key: 'rate1201_1300', from: 1201, to: 1300 },
+      { key: 'rate1301_1400', from: 1301, to: 1400 },
+      { key: 'rate1401_1500', from: 1401, to: 1500 },
+      { key: 'rate1501_1600', from: 1501, to: 1600 },
+      { key: 'rate1600_plus', from: 1601, to: 9999 }
+    ];
+
+    // For type2, use different ranges
+    if (slabType === '2') {
+      const type2Ranges = [
+        { key: 'rate1_100', from: 1, to: 100 },
+        { key: 'rate101_200', from: 101, to: 200 },
+        { key: 'rate201_300', from: 201, to: 300 },
+        { key: 'rate301_400', from: 301, to: 400 },
+        { key: 'rate401_500', from: 401, to: 500 },
+        { key: 'rate501_600', from: 501, to: 600 },
+        { key: 'rate601_700', from: 601, to: 700 },
+        { key: 'rate701_800', from: 701, to: 800 },
+        { key: 'rate801_900', from: 801, to: 900 },
+        { key: 'rate901_1000', from: 901, to: 1000 },
+        { key: 'rate1001_1100', from: 1001, to: 1100 },
+        { key: 'rate1101_1200', from: 1101, to: 1200 },
+        { key: 'rate1201_1300', from: 1201, to: 1300 },
+        { key: 'rate1301_1400', from: 1301, to: 1400 },
+        { key: 'rate1401_1500', from: 1401, to: 1500 },
+        { key: 'rate1501_1600', from: 1501, to: 1600 },
+        { key: 'rate1600_plus', from: 1601, to: 9999 }
+      ];
+      
+      for (const range of type2Ranges) {
+        if (remainingDepth <= 0) break;
+        
+        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
+        if (applicableDepth > 0) {
+          totalCost += applicableDepth * (rates[range.key] || 0);
+          remainingDepth -= applicableDepth;
+        }
+      }
+    } else {
+      for (const range of ranges) {
+        if (remainingDepth <= 0) break;
+        
+        const applicableDepth = Math.min(remainingDepth, range.to - range.from + 1);
+        if (applicableDepth > 0) {
+          totalCost += applicableDepth * (rates[range.key] || 0);
+          remainingDepth -= applicableDepth;
+        }
+      }
     }
+    
+    return totalCost;
   };
 
-  const saveQuotationsToStorage = (quotationsData: Quotation[]) => {
-    try {
-      localStorage.setItem('anjaneya_quotations', JSON.stringify(quotationsData));
-    } catch (error) {
-      console.error('Error saving quotations to storage:', error);
-    }
-  };
 
-  const loadQuotations = useCallback(() => {
-    try {
-      const quotationsData = getQuotationsFromStorage();
-      setQuotations(quotationsData);
-    } catch (error) {
-      console.error('Error loading quotations:', error);
-      toast.error('Failed to load quotations');
-    }
-  }, []);
+  const [loading, setLoading] = useState(true);
 
-  const loadCustomers = useCallback(() => {
-    try {
-      const customersData = enhancedCustomerService.getAll();
-      setCustomers(customersData);
-    } catch (error) {
-      console.error('Error loading customers:', error);
-      toast.error('Failed to load customers');
+  const [formData, setFormData] = useState({
+    customerId: '',
+    serviceType: '',
+    customServiceType: '',
+    location: '',
+    serviceDate: new Date().toISOString().split('T')[0],
+    description: '',
+    totalDepth: 0,
+    pvc7Inch: 0,
+    pvc10Inch: 0,
+    bata: 2000,
+    slabRateType: '1', // 1, 2, or 3
+    existingBoreDepth: 0, // For type 3 (rebore)
+    existingBoreRate: 40, // Rate per foot for existing bore
+    reboreSlabType: '1', // For type 3: which slab rate to use (1 or 2)
+    notes: '',
+    terms: `Payment is due within 30 days. 6-month warranty on workmanship. 24-hour cancellation notice required.`,
+    enableTax: false,
+    taxRate: 18,
+    advanceAmount: 0
+  });
+
+  // Load slab rate configuration from localStorage
+  const [slabRateConfig, setSlabRateConfig] = useState({
+    type1: {
+      rate1_300: 200,
+      rate301_400: 210,
+      rate401_500: 220,
+      rate501_600: 230,
+      rate601_700: 240,
+      rate701_800: 250,
+      rate801_900: 260,
+      rate901_1000: 270,
+      rate1001_1100: 280,
+      rate1101_1200: 290,
+      rate1201_1300: 300,
+      rate1301_1400: 310,
+      rate1401_1500: 320,
+      rate1501_1600: 330,
+      rate1600_plus: 340
+    },
+    type2: {
+      rate1_500: 200,
+      rate501_600: 210,
+      rate601_700: 220,
+      rate701_800: 230,
+      rate801_900: 240,
+      rate901_1000: 250,
+      rate1001_1100: 260,
+      rate1101_1200: 270,
+      rate1201_1300: 280,
+      rate1301_1400: 290,
+      rate1401_1500: 300,
+      rate1501_1600: 310,
+      rate1600_plus: 320
+    },
+    type3: {
+      rate1_300: 200,
+      rate301_400: 210,
+      rate401_500: 220,
+      rate501_600: 230,
+      rate601_700: 240,
+      rate701_800: 250,
+      rate801_900: 260,
+      rate901_1000: 270,
+      rate1001_1100: 280,
+      rate1101_1200: 290,
+      rate1201_1300: 300,
+      rate1301_1400: 310,
+      rate1401_1500: 320,
+      rate1501_1600: 330,
+      rate1600_plus: 340,
+      rate1_500: 200
     }
-  }, []);
+  });
+
+  const [slabNames, setSlabNames] = useState({
+    type1: 'Slab #1',
+    type2: 'Slab #2', 
+    type3: 'Slab #3'
+  });
+
+  // Custom slabs state
+  const [customSlabs, setCustomSlabs] = useState<any[]>([]);
+
+  const [showCustomServiceInput, setShowCustomServiceInput] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState<string[]>([]);
 
   useEffect(() => {
-    loadQuotations();
-    loadCustomers();
-  }, [loadQuotations, loadCustomers]);
-
-  useEffect(() => {
-    // Load view mode preference
-    const savedViewMode = localStorage.getItem('quotation_view_mode') as 'grid' | 'table';
-    if (savedViewMode) {
+    loadData();
+    loadSlabRateConfig();
+    // Load saved view preference, default to table view
+    const savedViewMode = localStorage.getItem('quotationViewMode');
+    if (savedViewMode === 'table' || savedViewMode === 'grid') {
       setViewMode(savedViewMode);
     }
   }, []);
 
+  // Global ESC handler to close any open panels in this screen
   useEffect(() => {
-    // Filter quotations based on search term
-    if (searchTerm.trim() === '') {
-      setFilteredQuotations(quotations);
-    } else {
-      const filtered = quotations.filter(quotation =>
-        quotation.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quotation.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quotation.serviceDetails?.location?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredQuotations(filtered);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showModal) setShowModal(false);
+        if (showEnhancedForm) setShowEnhancedForm(false);
+        if (viewingQuotation) setViewingQuotation(null);
+        if (showEditModal) setShowEditModal(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showModal, showEnhancedForm, viewingQuotation, showEditModal]);
+
+  const loadSlabRateConfig = () => {
+    try {
+      const savedConfig = localStorage.getItem('anjaneya_slab_rate_config');
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig);
+        // Ensure all required rate fields exist, fallback to defaults if missing
+        const defaultRates = {
+          type1: {
+            rate1_300: 200,
+            rate301_400: 210,
+            rate401_500: 220,
+            rate501_600: 230,
+            rate601_700: 240,
+            rate701_800: 250,
+            rate801_900: 260,
+            rate901_1000: 270,
+            rate1001_1100: 280,
+            rate1101_1200: 290,
+            rate1201_1300: 300,
+            rate1301_1400: 310,
+            rate1401_1500: 320,
+            rate1501_1600: 330,
+            rate1600_plus: 340
+          },
+          type2: {
+            rate1_500: 200,
+            rate501_600: 210,
+            rate601_700: 220,
+            rate701_800: 230,
+            rate801_900: 240,
+            rate901_1000: 250,
+            rate1001_1100: 260,
+            rate1101_1200: 270,
+            rate1201_1300: 280,
+            rate1301_1400: 290,
+            rate1401_1500: 300,
+            rate1501_1600: 310,
+            rate1600_plus: 320
+          },
+          type3: {
+            rate1_300: 200,
+            rate301_400: 210,
+            rate401_500: 220,
+            rate501_600: 230,
+            rate601_700: 240,
+            rate701_800: 250,
+            rate801_900: 260,
+            rate901_1000: 270,
+            rate1001_1100: 280,
+            rate1101_1200: 290,
+            rate1201_1300: 300,
+            rate1301_1400: 310,
+            rate1401_1500: 320,
+            rate1501_1600: 330,
+            rate1600_plus: 340,
+            rate1_500: 200
+          }
+        };
+        
+        // Merge saved config with defaults to ensure all fields exist
+        const mergedConfig = {
+          type1: { ...defaultRates.type1, ...parsed.type1 },
+          type2: { ...defaultRates.type2, ...parsed.type2 },
+          type3: { ...defaultRates.type3, ...parsed.type3 }
+        };
+        
+        setSlabRateConfig(mergedConfig);
+      }
+      
+      // Load custom slab names
+      const savedNames = localStorage.getItem('anjaneya_slab_names');
+      if (savedNames) {
+        const parsedNames = JSON.parse(savedNames);
+        setSlabNames(parsedNames);
+      }
+
+      // Load custom slabs
+      const savedCustomSlabs = localStorage.getItem('anjaneya_custom_slabs');
+      if (savedCustomSlabs) {
+        const parsedCustomSlabs = JSON.parse(savedCustomSlabs);
+        setCustomSlabs(parsedCustomSlabs);
+      }
+    } catch (error) {
+      console.error('Error loading slab rate config:', error);
     }
+  };
+
+  const calculateEditRates = useCallback(() => {
+    if (!slabRateConfig || editDepth <= 0) return;
+
+    let rates: { [key: string]: number };
+    
+    // Check if it's a custom slab
+    const customSlab = customSlabs.find(slab => slab.id === editSlabRateType);
+    if (customSlab) {
+      // Use custom slab rates
+      rates = customSlab.rates;
+    } else {
+      // Use standard slab rates
+      const typeKey = `type${editSlabRateType}` as keyof typeof slabRateConfig;
+      rates = generateDefaultRatesForEdit(editStartingRate, typeKey);
+    }
+    
+    const slabCost = calculateSlabRateByRangesForEdit(editDepth, rates, editSlabRateType);
+    const pvc7Cost = editPVC7 * editPVC7Rate;
+    const pvc10Cost = editPVC10 * editPVC10Rate;
+    const subtotal = slabCost + pvc7Cost + pvc10Cost + editBata;
+    const taxAmount = 0; // No tax in quick edit for simplicity
+    const total = subtotal + taxAmount;
+
+    setEditCalculatedRates({
+      slabCost,
+      pvc7Cost,
+      pvc10Cost,
+      bata: editBata,
+      subtotal,
+      taxAmount,
+      total,
+      rates
+    });
+  }, [slabRateConfig, editDepth, editSlabRateType, editStartingRate, editPVC7, editPVC10, editPVC7Rate, editPVC10Rate, editBata, customSlabs]);
+
+  // Auto-calculate when values change
+  useEffect(() => {
+    calculateEditRates();
+  }, [calculateEditRates]);
+
+  useEffect(() => {
+    const filtered = quotations.filter(quotation => {
+      const searchLower = searchTerm.toLowerCase();
+      
+      // Search in customer details
+      const customerMatch = 
+        (quotation.customer?.name || '').toLowerCase().includes(searchLower) ||
+        (quotation.customer?.phoneNumber || '').includes(searchTerm) ||
+        (quotation.customer?.whatsappNumber && quotation.customer.whatsappNumber.includes(searchTerm)) ||
+        (quotation.customer?.email && quotation.customer.email.toLowerCase().includes(searchLower)) ||
+        (quotation.customer?.address || '').toLowerCase().includes(searchLower);
+      
+      // Search in quotation details
+      const quotationMatch = 
+        (quotation.invoiceNumber || '').toLowerCase().includes(searchLower) ||
+        (quotation.serviceDetails?.serviceType || '').toLowerCase().includes(searchLower) ||
+        (quotation.serviceDetails?.location || '').toLowerCase().includes(searchLower) ||
+        (quotation.serviceDetails?.description && quotation.serviceDetails.description.toLowerCase().includes(searchLower));
+      
+      // Search in amounts (convert to string for partial matching)
+      const amountMatch = 
+        (quotation.totalAmount || 0).toString().includes(searchTerm) ||
+        (quotation.paidAmount || 0).toString().includes(searchTerm) ||
+        (quotation.pendingAmount || 0).toString().includes(searchTerm);
+      
+      // Search in status
+      const statusMatch = 
+        (quotation.status || '').toLowerCase().includes(searchLower);
+      
+      // Search in dates (format dates as strings)
+      const quotationDate = quotation.invoiceDate ? (() => {
+        try {
+          const date = new Date(quotation.invoiceDate);
+          return isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-IN');
+        } catch {
+          return '';
+        }
+      })() : '';
+      const dueDate = quotation.dueDate ? (() => {
+        try {
+          const date = new Date(quotation.dueDate);
+          return isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-IN');
+        } catch {
+          return '';
+        }
+      })() : '';
+      const dateMatch = 
+        quotationDate.includes(searchTerm) ||
+        dueDate.includes(searchTerm);
+      
+      return customerMatch || quotationMatch || amountMatch || statusMatch || dateMatch;
+    });
+    setFilteredQuotations(filtered);
   }, [quotations, searchTerm]);
 
   const handleViewModeChange = (mode: 'grid' | 'table') => {
     setViewMode(mode);
-    localStorage.setItem('quotation_view_mode', mode);
+    localStorage.setItem('quotationViewMode', mode);
   };
 
-  const deleteQuotation = (id: string) => {
-    const updatedQuotations = quotations.filter(q => q.id !== id);
-    setQuotations(updatedQuotations);
-    saveQuotationsToStorage(updatedQuotations);
-    toast.success('Quotation deleted successfully');
+  const formatDate = (date: Date) => {
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        return 'N/A';
+      }
+      return dateObj.toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'N/A';
+    }
   };
 
-  const duplicateQuotation = (quotation: Quotation) => {
-    const newQuotation: Quotation = {
-      ...quotation,
-      id: Date.now().toString(),
-      invoiceNumber: generateQuotationNumber(),
-      quotationDate: new Date(),
-      status: 'PENDING',
-      createdAt: new Date(),
-      updatedAt: new Date()
+  const loadData = () => {
+    try {
+      const allCustomers = customerService.getAll();
+      setCustomers(allCustomers);
+      
+      // Load quotations from localStorage (mock data for now)
+      const storedQuotations = localStorage.getItem('anjaneya_quotations');
+      const allQuotations = storedQuotations ? JSON.parse(storedQuotations) : [];
+      setQuotations(allQuotations);
+      setFilteredQuotations(allQuotations);
+
+      // Load service types from service
+      const allServiceTypes = serviceTypeService.getAllServiceTypes();
+      setServiceTypes(allServiceTypes);
+    } catch (error) {
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEnhancedFormSubmit = (quotationData: any) => {
+    try {
+      // Create quotation items from the calculated rates
+      const items: InvoiceItem[] = [];
+      
+      // Add drilling service items with detailed breakdown but without slab type mention
+      if (quotationData.calculatedRates.slabCost > 0) {
+        // Check if we have detailed breakdown
+        if (quotationData.calculatedRates.slabBreakdown && quotationData.calculatedRates.slabBreakdown.length > 0) {
+          // Add each slab range as a separate item but without slab type text
+          quotationData.calculatedRates.slabBreakdown.forEach((slabItem: any, index: number) => {
+            items.push({
+              id: `item_${Date.now()}_slab_${index}`,
+              type: 'service',
+              description: `Borewell Drilling - ${slabItem.range}`,
+              quantity: slabItem.depth,
+          unit: 'feet',
+              rate: slabItem.rate,
+              amount: slabItem.cost
+            });
+          });
+        } else {
+          // Fallback to single item if no breakdown available
+          items.push({
+            id: `item_${Date.now()}_1`,
+            type: 'service',
+            description: `${quotationData.serviceType} - ${quotationData.totalDepth} feet`,
+            quantity: quotationData.totalDepth,
+            unit: 'feet',
+            rate: quotationData.calculatedRates.slabCost / quotationData.totalDepth,
+            amount: quotationData.calculatedRates.slabCost
+          });
+        }
+      }
+      
+      // Add PVC items
+      if (quotationData.pvc7Inch > 0) {
+        items.push({
+          id: `item_${Date.now()}_2`,
+          type: 'material',
+          description: `7" PVC Casing`,
+          quantity: quotationData.pvc7Inch,
+          unit: 'feet', 
+          rate: quotationData.pvc7InchRate,
+          amount: quotationData.calculatedRates.pvc7Cost
+        });
+      }
+      
+      if (quotationData.pvc10Inch > 0) {
+        items.push({
+          id: `item_${Date.now()}_3`,
+          type: 'material',
+          description: `10" PVC Casing`,
+          quantity: quotationData.pvc10Inch,
+          unit: 'feet',
+          rate: quotationData.pvc10InchRate,
+          amount: quotationData.calculatedRates.pvc10Cost
+        });
+      }
+      
+      // Add Bata
+      if (quotationData.bata > 0) {
+        items.push({
+          id: `item_${Date.now()}_4`,
+          type: 'service',
+          description: 'Bata',
+          quantity: 1,
+          unit: 'service',
+          rate: quotationData.bata,
+          amount: quotationData.bata
+        });
+      }
+      
+      // Create the complete invoice
+      const newQuotation: ServiceInvoice = {
+        id: `inv_${Date.now()}`,
+        invoiceNumber: quotationData.invoiceNumber,
+        customer: quotationData.customer,
+        serviceDetails: {
+          id: `service_${Date.now()}`,
+          serviceType: quotationData.serviceType,
+          location: quotationData.location,
+          serviceDate: new Date(quotationData.serviceDate),
+          description: quotationData.description || `${quotationData.serviceType} service at ${quotationData.location}`
+        },
+        items: items,
+        subtotal: quotationData.calculatedRates.subtotal,
+        taxAmount: quotationData.calculatedRates.taxAmount,
+        taxRate: quotationData.taxRate || 0,
+        totalAmount: quotationData.calculatedRates.total,
+        paidAmount: quotationData.advanceAmount,
+        pendingAmount: quotationData.calculatedRates.total - quotationData.advanceAmount,
+        status: 'PENDING',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        invoiceDate: new Date(),
+        createdAt: new Date(),
+      updatedAt: new Date(),
+        notes: quotationData.notes,
+        terms: quotationData.terms
+      };
+      
+      // Save to localStorage
+      const updatedQuotations = [...quotations, newQuotation];
+      localStorage.setItem('anjaneya_quotations', JSON.stringify(updatedQuotations));
+      setQuotations(updatedQuotations);
+      setFilteredQuotations(updatedQuotations);
+      
+      setShowEnhancedForm(false);
+      toast.success('Quotation created successfully!');
+    } catch (error) {
+      toast.error('Failed to create quotation');
+    }
+  };
+
+
+
+  const calculateSlabRates = () => {
+    const { totalDepth, pvc7Inch, pvc10Inch, bata, slabRateType, existingBoreDepth, existingBoreRate, reboreSlabType } = formData;
+    
+    let slabRate = 0;
+    let existingBoreCost = 0;
+    
+    if (totalDepth > 0) {
+      if (slabRateType === '1') {
+        // #1 Slab Rate: 1-300 feet (using configured rates for all ranges)
+        slabRate = calculateSlabRateByRanges(totalDepth, slabRateConfig.type1);
+      } else if (slabRateType === '2') {
+        // #2 Slab Rate: 1-500 feet (using configured rates for all ranges)
+        slabRate = calculateSlabRateByRanges(totalDepth, slabRateConfig.type2);
+      } else if (slabRateType === '3') {
+        // #3 Slab Rate: For rebore/extension (existing bore + new drilling)
+        if (existingBoreDepth > 0) {
+          existingBoreCost = existingBoreDepth * existingBoreRate; // Cost for existing bore
+        }
+        
+        // New drilling starts from existing bore depth, using selected slab rate type
+        const newDrillingDepth = totalDepth - existingBoreDepth;
+        if (newDrillingDepth > 0) {
+          if (reboreSlabType === '1') {
+            // Use Type #1 logic for new drilling
+            slabRate = calculateSlabRateByRanges(newDrillingDepth, slabRateConfig.type3);
+      } else {
+            // Use Type #2 logic for new drilling
+            slabRate = calculateSlabRateByRanges(newDrillingDepth, slabRateConfig.type3);
+          }
+        }
+      }
+    }
+
+    // PVC casing rates (as per image)
+    const pvc7InchRate = pvc7Inch * 400; // ₹400 per foot for 7" PVC
+    const pvc10InchRate = pvc10Inch * 700; // ₹700 per foot for 10" PVC
+
+    return {
+      slabRate,
+      pvc7InchRate,
+      pvc10InchRate,
+      bata: bata || 2000,
+      existingBoreCost,
+      total: slabRate + pvc7InchRate + pvc10InchRate + (bata || 2000) + existingBoreCost
+    };
+  };
+
+  // Helper function to calculate slab rate based on depth ranges
+  const calculateSlabRateByRanges = (depth: number, config: any) => {
+    let totalRate = 0;
+    let remainingDepth = depth;
+    
+    // Define depth ranges and their corresponding rate keys
+    const ranges = [
+      { maxDepth: 300, rateKey: 'rate1_300' },
+      { maxDepth: 400, rateKey: 'rate301_400' },
+      { maxDepth: 500, rateKey: 'rate401_500' },
+      { maxDepth: 600, rateKey: 'rate501_600' },
+      { maxDepth: 700, rateKey: 'rate601_700' },
+      { maxDepth: 800, rateKey: 'rate701_800' },
+      { maxDepth: 900, rateKey: 'rate801_900' },
+      { maxDepth: 1000, rateKey: 'rate901_1000' },
+      { maxDepth: 1100, rateKey: 'rate1001_1100' },
+      { maxDepth: 1200, rateKey: 'rate1101_1200' },
+      { maxDepth: 1300, rateKey: 'rate1201_1300' },
+      { maxDepth: 1400, rateKey: 'rate1301_1400' },
+      { maxDepth: 1500, rateKey: 'rate1401_1500' },
+      { maxDepth: 1600, rateKey: 'rate1501_1600' },
+      { maxDepth: Infinity, rateKey: 'rate1600_plus' }
+    ];
+    
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      const prevMaxDepth = i === 0 ? 0 : ranges[i - 1].maxDepth;
+      
+      if (remainingDepth > prevMaxDepth) {
+        const depthInThisRange = Math.min(remainingDepth - prevMaxDepth, range.maxDepth - prevMaxDepth);
+        const rate = config[range.rateKey] || 0;
+        totalRate += depthInThisRange * rate;
+        
+        if (remainingDepth <= range.maxDepth) {
+          break;
+        }
+      }
+    }
+    
+    return totalRate;
+  };
+
+  // Helper function to create drilling items for invoice
+  const createDrillingItems = (allItems: InvoiceItem[], depth: number, config: any, prefix: string, startDepth: number) => {
+    let remainingDepth = depth;
+    
+    // Define depth ranges and their corresponding rate keys
+    const ranges = [
+      { maxDepth: 300, rateKey: 'rate1_300', label: '1-300' },
+      { maxDepth: 400, rateKey: 'rate301_400', label: '301-400' },
+      { maxDepth: 500, rateKey: 'rate401_500', label: '401-500' },
+      { maxDepth: 600, rateKey: 'rate501_600', label: '501-600' },
+      { maxDepth: 700, rateKey: 'rate601_700', label: '601-700' },
+      { maxDepth: 800, rateKey: 'rate701_800', label: '701-800' },
+      { maxDepth: 900, rateKey: 'rate801_900', label: '801-900' },
+      { maxDepth: 1000, rateKey: 'rate901_1000', label: '901-1000' },
+      { maxDepth: 1100, rateKey: 'rate1001_1100', label: '1001-1100' },
+      { maxDepth: 1200, rateKey: 'rate1101_1200', label: '1101-1200' },
+      { maxDepth: 1300, rateKey: 'rate1201_1300', label: '1201-1300' },
+      { maxDepth: 1400, rateKey: 'rate1301_1400', label: '1301-1400' },
+      { maxDepth: 1500, rateKey: 'rate1401_1500', label: '1401-1500' },
+      { maxDepth: 1600, rateKey: 'rate1501_1600', label: '1501-1600' },
+      { maxDepth: Infinity, rateKey: 'rate1600_plus', label: '1600+' }
+    ];
+    
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      const prevMaxDepth = i === 0 ? 0 : ranges[i - 1].maxDepth;
+      
+      if (remainingDepth > prevMaxDepth) {
+        const depthInThisRange = Math.min(remainingDepth - prevMaxDepth, range.maxDepth - prevMaxDepth);
+        const rate = config[range.rateKey] || 0;
+        
+        if (depthInThisRange > 0) {
+          const description = startDepth > 0 
+            ? `${prefix} ${range.label} (from ${startDepth + prevMaxDepth + 1})`
+            : `${prefix} ${range.label}`;
+          
+          allItems.push({
+            id: `slab_${range.label.replace(/\s+/g, '_')}_${Date.now()}_${Math.random()}`,
+            description: description,
+            quantity: depthInThisRange,
+            unit: 'feet',
+            rate: rate,
+            amount: depthInThisRange * rate,
+            type: 'service'
+          });
+        }
+        
+        if (remainingDepth <= range.maxDepth) {
+          break;
+        }
+      }
+    }
+  };
+
+  // Helper function to render slab rate breakdown for display
+  const renderSlabRateBreakdown = (depth: number, config: any, prefix: string, startDepth: number) => {
+    let remainingDepth = depth;
+    const breakdownItems = [];
+    
+    // Define depth ranges and their corresponding rate keys
+    const ranges = [
+      { maxDepth: 300, rateKey: 'rate1_300', label: '1-300' },
+      { maxDepth: 400, rateKey: 'rate301_400', label: '301-400' },
+      { maxDepth: 500, rateKey: 'rate401_500', label: '401-500' },
+      { maxDepth: 600, rateKey: 'rate501_600', label: '501-600' },
+      { maxDepth: 700, rateKey: 'rate601_700', label: '601-700' },
+      { maxDepth: 800, rateKey: 'rate701_800', label: '701-800' },
+      { maxDepth: 900, rateKey: 'rate801_900', label: '801-900' },
+      { maxDepth: 1000, rateKey: 'rate901_1000', label: '901-1000' },
+      { maxDepth: 1100, rateKey: 'rate1001_1100', label: '1001-1100' },
+      { maxDepth: 1200, rateKey: 'rate1101_1200', label: '1101-1200' },
+      { maxDepth: 1300, rateKey: 'rate1201_1300', label: '1201-1300' },
+      { maxDepth: 1400, rateKey: 'rate1301_1400', label: '1301-1400' },
+      { maxDepth: 1500, rateKey: 'rate1401_1500', label: '1401-1500' },
+      { maxDepth: 1600, rateKey: 'rate1501_1600', label: '1501-1600' },
+      { maxDepth: Infinity, rateKey: 'rate1600_plus', label: '1600+' }
+    ];
+    
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      const prevMaxDepth = i === 0 ? 0 : ranges[i - 1].maxDepth;
+      
+      if (remainingDepth > prevMaxDepth) {
+        const depthInThisRange = Math.min(remainingDepth - prevMaxDepth, range.maxDepth - prevMaxDepth);
+        const rate = config[range.rateKey] || 0;
+        
+        if (depthInThisRange > 0) {
+          const bgColor = i === 0 ? 'bg-blue-50' : 
+                         i === 1 ? 'bg-green-50' : 
+                         i === 2 ? 'bg-yellow-50' : 
+                         i === 3 ? 'bg-orange-50' : 
+                         i === 4 ? 'bg-red-50' : 
+                         i === 5 ? 'bg-pink-50' : 
+                         i === 6 ? 'bg-indigo-50' : 
+                         i === 7 ? 'bg-purple-50' : 
+                         i === 8 ? 'bg-teal-50' : 
+                         i === 9 ? 'bg-cyan-50' : 
+                         i === 10 ? 'bg-lime-50' : 
+                         i === 11 ? 'bg-amber-50' : 
+                         i === 12 ? 'bg-emerald-50' : 
+                         i === 13 ? 'bg-violet-50' : 'bg-gray-50';
+          
+          breakdownItems.push(
+            <div key={range.label} className={`${bgColor} p-2 rounded border`}>
+              <span className="text-gray-600">{range.label} ft:</span>
+              <div className="font-medium">{depthInThisRange} ft × ₹{rate} = ₹{(depthInThisRange * rate).toFixed(2)}</div>
+            </div>
+          );
+        }
+        
+        if (remainingDepth <= range.maxDepth) {
+          break;
+        }
+      }
+    }
+    
+    return breakdownItems;
+  };
+
+  const addCustomServiceType = () => {
+    if (!formData.customServiceType.trim()) {
+      toast.error('Please enter a service type name');
+      return;
+    }
+
+    const newType = formData.customServiceType.trim();
+    const success = serviceTypeService.addCustomServiceType(newType);
+    
+    if (success) {
+      // Reload service types
+      const allServiceTypes = serviceTypeService.getAllServiceTypes();
+      setServiceTypes(allServiceTypes);
+      
+      setFormData({
+        ...formData,
+        serviceType: newType,
+        customServiceType: ''
+      });
+      setShowCustomServiceInput(false);
+      toast.success('Custom service type added successfully');
+    } else {
+      toast.error('This service type already exists');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.customerId || !formData.serviceType || !formData.location) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Check if slab rates are calculated
+    const initialSlabRates = calculateSlabRates();
+    if (initialSlabRates.total === 2000) {
+      toast.error('Please enter borewell depth for slab rate calculation');
+      return;
+    }
+
+    const customer = customers.find(c => c.id === formData.customerId);
+    if (!customer) {
+      toast.error('Customer not found');
+      return;
+    }
+
+    const slabRates = calculateSlabRates();
+
+    // Create items from slab rates with breakdown as per image
+    const allItems: InvoiceItem[] = [];
+    
+        // Add slab rate items with breakdown by depth ranges based on slab rate type
+    if (slabRates.slabRate > 0 || slabRates.existingBoreCost > 0) {
+      const { totalDepth, slabRateType, existingBoreDepth } = formData;
+      
+      // Add existing bore cost item for type 3
+      if (slabRateType === '3' && slabRates.existingBoreCost > 0) {
+      allItems.push({
+          id: `existing_bore_${Date.now()}`,
+          description: `Existing Bore (${existingBoreDepth} feet)`,
+          quantity: existingBoreDepth,
+        unit: 'feet',
+          rate: formData.existingBoreRate,
+          amount: slabRates.existingBoreCost,
+        type: 'service'
+      });
+      }
+      
+      if (slabRates.slabRate > 0) {
+        if (slabRateType === '1') {
+          // #1 Slab Rate: Create items for all depth ranges
+          createDrillingItems(allItems, totalDepth, slabRateConfig.type1, 'Drilling', 0);
+        } else if (slabRateType === '2') {
+          // #2 Slab Rate: Create items for all depth ranges
+          createDrillingItems(allItems, totalDepth, slabRateConfig.type2, 'Drilling', 0);
+        } else if (slabRateType === '3') {
+          // #3 Slab Rate: For rebore/extension
+          const newDrillingDepth = totalDepth - existingBoreDepth;
+          if (newDrillingDepth > 0) {
+            if (formData.reboreSlabType === '1') {
+              // Use Type #1 logic for new drilling
+              createDrillingItems(allItems, newDrillingDepth, slabRateConfig.type3, 'New Drilling', existingBoreDepth);
+            } else {
+              // Use Type #2 logic for new drilling
+              createDrillingItems(allItems, newDrillingDepth, slabRateConfig.type3, 'New Drilling', existingBoreDepth);
+            }
+          }
+        }
+      }
+    }
+
+    if (slabRates.pvc7InchRate > 0) {
+      allItems.push({
+        id: `pvc7_${Date.now()}`,
+        description: '7" PVC',
+        quantity: formData.pvc7Inch,
+        unit: 'feet',
+        rate: 400,
+        amount: slabRates.pvc7InchRate,
+        type: 'material'
+      });
+    }
+
+    if (slabRates.pvc10InchRate > 0) {
+      allItems.push({
+        id: `pvc10_${Date.now()}`,
+        description: '10" PVC',
+        quantity: formData.pvc10Inch,
+        unit: 'feet',
+        rate: 700,
+        amount: slabRates.pvc10InchRate,
+        type: 'material'
+      });
+    }
+
+    if (slabRates.bata > 0) {
+      allItems.push({
+        id: `bata_${Date.now()}`,
+        description: 'BATA',
+        quantity: 1,
+        unit: 'Per Bore',
+        rate: slabRates.bata,
+        amount: slabRates.bata,
+        type: 'additional'
+      });
+    }
+
+    const finalSubtotal = allItems.reduce((sum, item) => sum + item.amount, 0);
+    const finalTaxAmount = formData.enableTax ? finalSubtotal * (formData.taxRate / 100) : 0;
+    const finalTotal = finalSubtotal + finalTaxAmount;
+
+    const serviceDetails: ServiceDetails = {
+      id: `service_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      serviceType: formData.serviceType,
+      location: formData.location,
+      serviceDate: new Date(formData.serviceDate),
+      description: formData.description,
+      materials: []
     };
 
-    const updatedQuotations = [newQuotation, ...quotations];
-    setQuotations(updatedQuotations);
-    saveQuotationsToStorage(updatedQuotations);
-    toast.success('Quotation duplicated successfully');
+    const quotationData = {
+      customerId: formData.customerId,
+      serviceDetails,
+      items: allItems,
+      subtotal: finalSubtotal,
+      taxAmount: finalTaxAmount,
+      taxRate: formData.enableTax ? formData.taxRate / 100 : 0,
+      totalAmount: finalTotal,
+      paidAmount: formData.advanceAmount || 0,
+      pendingAmount: Math.max(finalTotal - (formData.advanceAmount || 0), 0),
+      notes: formData.notes,
+      terms: formData.terms
+    };
+
+    try {
+      // API call to create invoice
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quotationData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Invoice created successfully:', result);
+
+      // Save to localStorage as well
+      const newQuotation: ServiceInvoice = {
+        ...result.data,
+        customer,
+        status: 'PENDING',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        invoiceDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const updatedQuotations = [...quotations, newQuotation];
+      setQuotations(updatedQuotations);
+      localStorage.setItem('anjaneya_quotations', JSON.stringify(updatedQuotations));
+
+      toast.success('Invoice created successfully');
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      toast.error('Failed to create quotation');
+    }
   };
 
-  const generateQuotationNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `QT${year}${month}${day}${random}`;
-  };
+  const generatePDF = (quotation: ServiceInvoice) => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 15;
+      let y = 20;
 
-  const exportToPDF = (quotation: Quotation) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-    const margin = 20;
+      // Modern gradient color scheme - Teal to Green
+      const primaryColor = { r: 13, g: 110, b: 139 }; // Deep ocean blue
+      const accentColor = { r: 255, g: 193, b: 7 }; // Golden yellow accent
+      const gradientStart = { r: 20, g: 184, b: 166 }; // Modern teal
+      const gradientEnd = { r: 5, g: 150, b: 105 }; // Forest green
+      const lightTeal = { r: 208, g: 236, b: 231 }; // Light teal background
+      const darkGray = { r: 45, g: 55, b: 72 }; // Dark gray text
 
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(0, 0, 0);
-    doc.text('BOREWELL QUOTATION', pageWidth / 2, 30, { align: 'center' });
+      // Load company details from settings
+      let companyName = 'AquaFlow Solutions';
+      let companyContact = '+91 98765 43210';
+      let companyAddress = '123 Water Works Street, Hydro City, Karnataka - 560001';
+      let companyTagline = 'Excellence in Water Solutions';
+      try {
+        const saved = localStorage.getItem('anjaneya_settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          companyName = parsed?.company?.name || companyName;
+          companyContact = parsed?.company?.contact || companyContact;
+          companyAddress = parsed?.company?.address || companyAddress;
+          companyTagline = parsed?.company?.tagline || companyTagline;
+        }
+      } catch {}
 
-    // Company details
-    doc.setFontSize(12);
-    doc.text('Anjaneya Borewells', margin, 50);
-    doc.text('Professional Borewell Services', margin, 60);
-    doc.text('Phone: +91 XXXXXXXXXX', margin, 70);
-    doc.text('Email: info@anjaneyaborewells.com', margin, 80);
+      // Modern gradient header background
+      const headerHeight = 40;
+      
+      // Create gradient effect by drawing multiple rectangles with different colors
+      const gradientSteps = 8;
+      for (let i = 0; i < gradientSteps; i++) {
+        const ratio = i / (gradientSteps - 1);
+        const r = Math.round(gradientStart.r + (gradientEnd.r - gradientStart.r) * ratio);
+        const g = Math.round(gradientStart.g + (gradientEnd.g - gradientStart.g) * ratio);
+        const b = Math.round(gradientStart.b + (gradientEnd.b - gradientStart.b) * ratio);
+        
+        doc.setFillColor(r, g, b);
+        const rectHeight = headerHeight / gradientSteps;
+        doc.rect(0, i * rectHeight, pageWidth, rectHeight, 'F');
+      }
+      
+      // Add decorative accent stripe
+      doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.rect(0, headerHeight - 3, pageWidth, 3, 'F');
 
-    // Quotation details
-    doc.text(`Quotation No: ${quotation.invoiceNumber}`, pageWidth - margin - 80, 50);
-    doc.text(`Date: ${new Date((quotation as any).quotationDate || quotation.invoiceDate).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 60);
-    doc.text(`Valid Till: ${new Date(Date.now() + ((quotation as any).validityDays || 30) * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN')}`, pageWidth - margin - 80, 70);
+      // Company name and tagline (white text for visibility)
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text(companyName || 'AquaFlow Solutions', marginX, 18);
+      
+      if (companyTagline) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(companyTagline, marginX, 28);
+      }
 
-    // Customer details
-    let yPos = 100;
-    doc.setFontSize(14);
-    doc.text('Bill To:', margin, yPos);
-    yPos += 10;
-    
-    doc.setFontSize(12);
-    doc.text(quotation.customer.name, margin, yPos);
-    yPos += 8;
-    doc.text(quotation.customer.address, margin, yPos);
-    yPos += 8;
-    doc.text(`Phone: ${quotation.customer.phoneNumber}`, margin, yPos);
-    if (quotation.customer.email) {
-      yPos += 8;
-      doc.text(`Email: ${quotation.customer.email}`, margin, yPos);
-    }
+      // Invoice info moved to BILL TO section
 
-    yPos += 20;
-    if (quotation.serviceDetails && quotation.serviceDetails.location) {
-      doc.text(`Service Location: ${quotation.serviceDetails.location}`, margin, yPos);
-      yPos += 10;
-    }
+      y = headerHeight + 15;
 
-    // Items table
-    yPos += 10;
-    const tableColumns = ['Description', 'Qty', 'Unit', 'Rate', 'Amount'];
-    const tableRows = quotation.items.map(item => [
-      item.description,
-      item.quantity.toString(),
-      item.unit,
-      `₹${item.rate.toLocaleString('en-IN')}`,
-      `₹${item.amount.toLocaleString('en-IN')}`
-    ]);
+      // Modern client section with invoice info on the right
+      const billToStartY = y;
+      
+      // BILL TO section (left side)
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('BILL TO:', marginX, y);
+      
+      y += 8;
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(quotation.customer?.name || 'Customer Name', marginX, y);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      y += 6;
+      if (quotation.customer?.phoneNumber) {
+        doc.text(`Phone: ${quotation.customer.phoneNumber}`, marginX, y);
+        y += 5;
+      }
+      if (quotation.customer?.email) {
+        doc.text(`Email: ${quotation.customer.email}`, marginX, y);
+        y += 5;
+      }
+      if (quotation.customer?.address) {
+        const addressLines = doc.splitTextToSize(`Address: ${quotation.customer.address}`, 100);
+        doc.text(addressLines, marginX, y);
+        y += addressLines.length * 5;
+      }
+      
+      // Invoice information (right side) - simple text format
+      const invoiceInfoX = pageWidth - marginX - 10;
+      let invoiceY = billToStartY;
+      
+      // Invoice details as simple text lines
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`QUOTATION: ${quotation.invoiceNumber || 'QUO-001'}`, invoiceInfoX, invoiceY, { align: 'right' });
+      
+      invoiceY += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
+      doc.text(`Date: ${quotation.invoiceDate ? (() => {
+        try {
+          const date = new Date(quotation.invoiceDate);
+          return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+        } catch {
+          return 'N/A';
+        }
+      })() : 'N/A'}`, invoiceInfoX, invoiceY, { align: 'right' });
 
-    (doc as any).autoTable({
-      head: [tableColumns],
-      body: tableRows,
-      startY: yPos,
-      theme: 'grid',
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [51, 122, 183] }
-    });
+      y += 10;
 
-    // Totals
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
-    const totalsX = pageWidth - margin - 80;
-    
-    doc.text(`Subtotal: ₹${quotation.subtotal.toLocaleString('en-IN')}`, totalsX, finalY);
-    doc.text(`Tax (18%): ₹${quotation.taxAmount.toLocaleString('en-IN')}`, totalsX, finalY + 10);
-    doc.setFontSize(14);
-    doc.text(`Total: ₹${quotation.totalAmount.toLocaleString('en-IN')}`, totalsX, finalY + 20);
+      // Paid watermark
+      if (quotation.status && quotation.status.toUpperCase() === 'PAID') {
+        doc.setTextColor(200, 200, 200);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(60);
+        (doc as any).text('PAID', pageWidth / 2, pageHeight / 2, { align: 'center', angle: 30 });
+      }
 
-    // Terms and conditions
-    const terms = [
-      '50% advance payment required',
-      'Balance payment on completion',
-      'GST extra as applicable',
-      `Quotation valid for ${(quotation as any).validityDays || 30} days`
-    ];
+      // Items table - with detailed slab breakdown
+      const tableData = [];
+      let itemIndex = 1;
+      
+      // Process each invoice item and expand drilling items into slab breakdown
+      for (const item of quotation.items || []) {
+        if (item.description && (
+          item.description.includes('Drilling') || 
+          item.description.includes('Borewell') ||
+          (item.description.includes('feet') && item.type === 'service')
+        )) {
+          // This is a drilling item - break it down into slab ranges
+          const totalDepth = item.quantity || 0;
+          
+          if (totalDepth > 0) {
+            // Load actual slab rates from localStorage
+            let slabRates = {
+              rate1_300: 75,
+              rate301_400: 80,
+              rate401_500: 85,
+              rate501_600: 95,
+              rate601_700: 105,
+              rate701_800: 115,
+              rate801_900: 125,
+              rate901_1000: 135,
+              rate1001_1100: 235,
+              rate1101_1200: 335,
+              rate1201_1300: 435,
+              rate1301_1400: 535,
+              rate1401_1500: 635,
+              rate1501_1600: 735,
+              rate1600_plus: 835
+            };
+            
+            try {
+              const savedConfig = localStorage.getItem('anjaneya_slab_rate_config');
+              if (savedConfig) {
+                const parsed = JSON.parse(savedConfig);
+                if (parsed.type1) {
+                  slabRates = { ...slabRates, ...parsed.type1 };
+                }
+              }
+            } catch (error) {
+              console.log('Using default rates for PDF breakdown');
+            }
+            
+            const ranges = [
+              { maxDepth: 300, rate: slabRates.rate1_300, label: '1-300 feet' },
+              { maxDepth: 400, rate: slabRates.rate301_400, label: '301-400 feet' },
+              { maxDepth: 500, rate: slabRates.rate401_500, label: '401-500 feet' },
+              { maxDepth: 600, rate: slabRates.rate501_600, label: '501-600 feet' },
+              { maxDepth: 700, rate: slabRates.rate601_700, label: '601-700 feet' },
+              { maxDepth: 800, rate: slabRates.rate701_800, label: '701-800 feet' },
+              { maxDepth: 900, rate: slabRates.rate801_900, label: '801-900 feet' },
+              { maxDepth: 1000, rate: slabRates.rate901_1000, label: '901-1000 feet' },
+              { maxDepth: 1100, rate: slabRates.rate1001_1100, label: '1001-1100 feet' },
+              { maxDepth: 1200, rate: slabRates.rate1101_1200, label: '1101-1200 feet' },
+              { maxDepth: 1300, rate: slabRates.rate1201_1300, label: '1201-1300 feet' },
+              { maxDepth: 1400, rate: slabRates.rate1301_1400, label: '1301-1400 feet' },
+              { maxDepth: 1500, rate: slabRates.rate1401_1500, label: '1401-1500 feet' },
+              { maxDepth: 1600, rate: slabRates.rate1501_1600, label: '1501-1600 feet' },
+              { maxDepth: Infinity, rate: slabRates.rate1600_plus, label: '1600+ feet' }
+            ];
+            
+            // Calculate and add each slab range as a separate row
+            let remainingDepth = totalDepth;
+            let currentStart = 1;
+            
+            for (let i = 0; i < ranges.length && remainingDepth > 0; i++) {
+              const range = ranges[i];
+              const rangeStart = currentStart;
+              const rangeEnd = Math.min(range.maxDepth, rangeStart + remainingDepth - 1);
+              const depthInThisRange = rangeEnd - rangeStart + 1;
+              
+              if (depthInThisRange > 0) {
+                const cost = depthInThisRange * range.rate;
+                
+                tableData.push([
+                  String(itemIndex),
+                  `${rangeStart}-${rangeEnd} feet`,
+                  String(depthInThisRange),
+                  `Rs. ${range.rate.toFixed(2)}`,
+                  `Rs. ${cost.toFixed(2)}`
+                ]);
+                
+                itemIndex++;
+                remainingDepth -= depthInThisRange;
+                currentStart = rangeEnd + 1;
+              }
+            }
+          }
+        } else {
+          // Regular item (PVC, Bata, etc.) - add as is
+          tableData.push([
+            String(itemIndex),
+            item.description || '',
+            String(item.quantity || 0),
+            `Rs. ${(item.rate || 0).toFixed(2)}`,
+            `Rs. ${(item.amount || 0).toFixed(2)}`
+          ]);
+          itemIndex++;
+        }
+      }
 
-    let termsY = finalY + 40;
-    doc.setFontSize(12);
-    doc.text('Terms & Conditions:', margin, termsY);
-    termsY += 10;
-    
-    terms.forEach((term, index) => {
+        (doc as any).autoTable({
+          startY: y,
+      head: [['#', 'SERVICE DESCRIPTION', 'QTY', 'RATE', 'AMOUNT']],
+      body: tableData,
+      theme: 'striped',
+          styles: { 
+            fontSize: 9,
+            cellPadding: 3,
+          lineColor: [accentColor.r, accentColor.g, accentColor.b], 
+          lineWidth: 0.3,
+          textColor: [darkGray.r, darkGray.g, darkGray.b],
+          fontStyle: 'normal'
+          },
+          headStyles: { 
+            fillColor: [primaryColor.r, primaryColor.g, primaryColor.b],
+            textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+          halign: 'center'
+          },
+        alternateRowStyles: { fillColor: [lightTeal.r, lightTeal.g, lightTeal.b] },
+          columnStyles: {
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 85, halign: 'left' },
+          2: { cellWidth: 20, halign: 'center' },
+          3: { cellWidth: 25, halign: 'right' },
+          4: { cellWidth: 30, halign: 'right' }
+        },
+        margin: { left: marginX, right: marginX },
+        tableWidth: pageWidth - marginX * 2
+      });
+
+      let afterTableY = (doc as any).lastAutoTable.finalY + 6;
+
+      // Modern totals section
+      const totalsX = pageWidth - marginX - 65;
+      afterTableY += 5;
+      
+      // Totals background box
+      doc.setFillColor(lightTeal.r, lightTeal.g, lightTeal.b);
+      doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(totalsX - 5, afterTableY - 3, 70, 35, 2, 2, 'FD');
+      
+      doc.setTextColor(darkGray.r, darkGray.g, darkGray.b);
       doc.setFontSize(10);
-      doc.text(`${index + 1}. ${term}`, margin, termsY);
-      termsY += 8;
+      doc.setFont('helvetica', 'normal');
+      
+      // Subtotal
+      doc.text('Subtotal:', totalsX, afterTableY + 3);
+      doc.text(`Rs. ${(quotation.subtotal || 0).toFixed(2)}`, totalsX + 45, afterTableY + 3, { align: 'right' });
+      
+      // Tax if applicable
+      if ((quotation.taxAmount || 0) > 0) {
+        doc.text(`Tax (${((quotation.taxRate || 0) * 100).toFixed(0)}%):`, totalsX, afterTableY + 8);
+        doc.text(`Rs. ${(quotation.taxAmount || 0).toFixed(2)}`, totalsX + 45, afterTableY + 8, { align: 'right' });
+        afterTableY += 5;
+      }
+
+      // Advance payment if applicable
+      if ((quotation.paidAmount || 0) > 0) {
+        doc.text('Advance:', totalsX, afterTableY + 8);
+        doc.text(`Rs. ${(quotation.paidAmount || 0).toFixed(2)}`, totalsX + 45, afterTableY + 8, { align: 'right' });
+        afterTableY += 5;
+      }
+
+      // Total amount with emphasis
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.text('TOTAL:', totalsX, afterTableY + 13);
+      doc.text(`Rs. ${(quotation.totalAmount || 0).toFixed(2)}`, totalsX + 45, afterTableY + 13, { align: 'right' });
+
+      // Balance due
+      const balance = (quotation.totalAmount || 0) - (quotation.paidAmount || 0);
+      if (balance > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Balance Due:', totalsX, afterTableY + 20);
+        doc.text(`Rs. ${Math.max(balance, 0).toFixed(2)}`, totalsX + 45, afterTableY + 20, { align: 'right' });
+      }
+      
+      afterTableY += 25;
+    
+      // Amount in words section - REMOVED
+
+      // Notes & Terms sections - REMOVED
+
+      // Modern gradient footer at bottom of page
+      const footerHeight = 20;
+      const footerY = pageHeight - footerHeight; // Position at very bottom of page
+      
+      // Check if content overlaps with footer, if so add new page
+      if (afterTableY > footerY - 10) {
+        doc.addPage();
+        // Create footer gradient on new page
+        for (let i = 0; i < gradientSteps; i++) {
+          const ratio = i / (gradientSteps - 1);
+          const r = Math.round(gradientEnd.r + (gradientStart.r - gradientEnd.r) * ratio); // Reverse gradient
+          const g = Math.round(gradientEnd.g + (gradientStart.g - gradientEnd.g) * ratio);
+          const b = Math.round(gradientEnd.b + (gradientStart.b - gradientEnd.b) * ratio);
+          
+          doc.setFillColor(r, g, b);
+          const rectHeight = footerHeight / gradientSteps;
+          doc.rect(0, footerY + i * rectHeight, pageWidth, rectHeight, 'F');
+        }
+        
+        // Add accent stripe at top of footer
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(0, footerY, pageWidth, 3, 'F');
+        
+        // Footer text with white color for visibility
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyName, pageWidth / 2, footerY + 10, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 16, { align: 'center' });
+      } else {
+        // Create footer gradient on current page
+        for (let i = 0; i < gradientSteps; i++) {
+          const ratio = i / (gradientSteps - 1);
+          const r = Math.round(gradientEnd.r + (gradientStart.r - gradientEnd.r) * ratio); // Reverse gradient
+          const g = Math.round(gradientEnd.g + (gradientStart.g - gradientEnd.g) * ratio);
+          const b = Math.round(gradientEnd.b + (gradientStart.b - gradientEnd.b) * ratio);
+          
+          doc.setFillColor(r, g, b);
+          const rectHeight = footerHeight / gradientSteps;
+          doc.rect(0, footerY + i * rectHeight, pageWidth, rectHeight, 'F');
+        }
+        
+        // Add accent stripe at top of footer
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(0, footerY, pageWidth, 3, 'F');
+        
+        // Footer text with white color for visibility
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyName, pageWidth / 2, footerY + 10, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(`${companyContact} | ${companyAddress}`, pageWidth / 2, footerY + 16, { align: 'center' });
+      }
+
+      // Reset text color to black before save
+      doc.setTextColor(0, 0, 0);
+
+      // No notes/terms to keep single page
+      doc.save(`quotation-${quotation.invoiceNumber || 'QUO-001'}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
+  const shareToWhatsApp = (quotation: ServiceInvoice) => {
+    // Get customer's phone number and process it with Indian prefix
+    const phoneNumber = processIndianPhoneNumber(quotation.customer?.whatsappNumber || quotation.customer?.phoneNumber || '');
+    
+    const message = `Hello ${quotation.customer?.name || 'Customer'},\n\nYour quotation #${quotation.invoiceNumber || 'N/A'} for ${quotation.serviceDetails?.serviceType || 'service'} service is ready.\n\nTotal Amount: ₹${(quotation.totalAmount || 0).toFixed(2)}\nDue Date: ${quotation.dueDate ? (() => {
+      try {
+        const date = new Date(quotation.dueDate);
+        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+      } catch {
+        return 'N/A';
+      }
+    })() : 'N/A'}\n\nPlease contact us for confirmation.\n\nThank you,\nAnjaneya Borewells`;
+    
+    // Create WhatsApp URL with processed phone number
+    let whatsappUrl;
+    if (phoneNumber) {
+      whatsappUrl = `https://wa.me/${phoneNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+    } else {
+      // Fallback to general WhatsApp if no phone number
+      whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    }
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    // setEditingQuotation(null);
+    setFormData({
+      customerId: '',
+      serviceType: '',
+      customServiceType: '',
+      location: '',
+      serviceDate: new Date().toISOString().split('T')[0],
+      description: '',
+      totalDepth: 0,
+      pvc7Inch: 0,
+      pvc10Inch: 0,
+      bata: 2000,
+      slabRateType: '1',
+      existingBoreDepth: 0,
+      existingBoreRate: 40,
+      reboreSlabType: '1',
+      notes: '',
+      terms: `Payment is due within 30 days. 6-month warranty on workmanship. 24-hour cancellation notice required.`,
+      enableTax: false,
+      taxRate: 18,
+      advanceAmount: 0
     });
-
-    // Save PDF
-    doc.save(`Quotation_${quotation.invoiceNumber}.pdf`);
-    toast.success('Quotation exported to PDF successfully');
+    setShowCustomServiceInput(false);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleCloseViewModal = () => {
+    setViewingQuotation(null);
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+  const applyEditsToInvoice = (original: ServiceInvoice, updates: Partial<ServiceInvoice>): ServiceInvoice => {
+    const updated: ServiceInvoice = { ...original, ...updates, updatedAt: new Date() } as ServiceInvoice;
+    return updated;
   };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
       case 'PAID': return 'bg-green-100 text-green-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
       case 'CANCELLED': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusDisplayName = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'Draft';
-      case 'PAID': return 'Accepted';
-      case 'CANCELLED': return 'Rejected';
-      default: return status;
-    }
-  };
 
-  const onQuotationCreated = (newQuotation: ServiceInvoice) => {
-    // Convert ServiceInvoice to Quotation
-    const quotation: Quotation = {
-      ...newQuotation,
-      quotationType: 'estimate',
-      validityDays: 30,
-      quotationDate: new Date(),
-      invoiceNumber: generateQuotationNumber()
-    };
-
-    const updatedQuotations = [quotation, ...quotations];
-    setQuotations(updatedQuotations);
-    saveQuotationsToStorage(updatedQuotations);
-    setShowEnhancedForm(false);
-    toast.success('Quotation created successfully');
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
+        <div>
           <h1 className="text-2xl font-bold text-gray-900">Quotation Management</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Create and manage quotations for borewell services
+            Create and manage service quotations with PDF export and WhatsApp sharing
           </p>
         </div>
-        <div className="flex items-center space-x-3 mt-4 sm:mt-0 flex-shrink-0">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-3">
           {/* View Toggle */}
-          <div className="flex rounded-md shadow-sm">
+          <div className="inline-flex rounded-md shadow-sm">
             <button
               onClick={() => handleViewModeChange('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+              className={`relative inline-flex items-center px-3 py-2 rounded-l-md border text-sm font-medium ${
                 viewMode === 'grid'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
+              title="Grid View"
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleViewModeChange('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+              className={`relative inline-flex items-center px-3 py-2 rounded-r-md border-t border-r border-b text-sm font-medium ${
                 viewMode === 'table'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  ? 'bg-blue-600 border-blue-600 text-white z-10'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
+              title="Table View"
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
           </div>
           
           <button
-            onClick={() => setShowEnhancedForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-w-0 whitespace-nowrap"
+            onClick={() => window.location.href = '/slab-rates'}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            <PlusIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span className="truncate">New Quotation</span>
+            <Cog6ToothIcon className="h-4 w-4 mr-2" />
+            Slab Rate Config
+          </button>
+          <button
+            onClick={() => setShowEnhancedForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create Invoice
           </button>
         </div>
       </div>
 
       {/* Search */}
+      <div className="max-w-lg">
       <div className="relative">
-        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          </div>
         <input
           type="text"
-          placeholder="Search quotations by customer name, number, or location..."
-          className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            placeholder="Search by name, mobile, address, invoice #, amount, status, date..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-        />
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          />
+        </div>
+        {searchTerm && (
+          <p className="mt-1 text-xs text-gray-500">
+            Searching in: Customer name, mobile, email, address, invoice number, service type, location, amounts, status, and dates
+          </p>
+        )}
       </div>
 
-      {/* Quotations List */}
-      {viewMode === 'table' ? (
+      {/* Quotations Display */}
+      {filteredQuotations.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="mx-auto h-12 w-12 text-gray-400">
+            <DocumentArrowDownIcon className="h-12 w-12" />
+          </div>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No quotations</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm ? 'No quotations found matching your search.' : 'Get started by creating a new quotation.'}
+          </p>
+          {!searchTerm && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowEnhancedForm(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Create Invoice
+              </button>
+            </div>
+          )}
+        </div>
+      ) : viewMode === 'table' ? (
+        /* Table View */
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -466,7 +1624,7 @@ const QuotationManagement: React.FC = () => {
                     Customer
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quotation Details
+                    Invoice Details
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Service Location
@@ -478,9 +1636,9 @@ const QuotationManagement: React.FC = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valid Till
+                    Service Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -491,101 +1649,110 @@ const QuotationManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center">
-                            <span className="text-sm font-medium text-white">
-                              {quotation.customer?.name?.charAt(0).toUpperCase()}
+                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {(quotation.customer?.name || 'C').charAt(0).toUpperCase()}
                             </span>
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {quotation.customer?.name}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{quotation.customer?.name || 'N/A'}</div>
+                          {quotation.customer?.phoneNumber && (
                           <div className="flex items-center text-sm text-gray-500">
-                            <PhoneIcon className="h-4 w-4 mr-1" />
-                            {quotation.customer?.phoneNumber}
+                              <PhoneIcon className="h-3 w-3 mr-1" />
+                              {quotation.customer.phoneNumber}
                           </div>
+                          )}
                           {quotation.customer?.email && (
                             <div className="flex items-center text-sm text-gray-500">
-                              <EnvelopeIcon className="h-4 w-4 mr-1" />
-                              {quotation.customer?.email}
+                              <EnvelopeIcon className="h-3 w-3 mr-1" />
+                              {quotation.customer.email}
                             </div>
                           )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {quotation.invoiceNumber}
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium">{quotation.invoiceNumber || 'N/A'}</div>
+                        <div className="text-gray-500">
+                          Service: {quotation.serviceDetails?.serviceType || 'N/A'}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {formatDate(quotation.quotationDate)}
+                        <div className="text-gray-500">
+                          Due: {quotation.dueDate ? formatDate(new Date(quotation.dueDate)) : 'N/A'}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {quotation.quotationType}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-start text-sm text-gray-900">
-                        <MapPinIcon className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
-                        <span>{quotation.serviceDetails?.location || 'Not specified'}</span>
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        <div className="flex items-start">
+                          <MapPinIcon className="h-4 w-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
+                          <span className="break-words">{quotation.serviceDetails?.location || 'N/A'}</span>
+                      </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(quotation.totalAmount)}
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium flex items-center">
+                          <CurrencyRupeeIcon className="h-4 w-4 mr-1 text-gray-400" />
+                          ₹{(quotation.totalAmount || 0).toFixed(2)}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {quotation.items?.length || 0} items
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
-                        {getStatusDisplayName(quotation.status)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(quotation.status || 'PENDING')}`}>
+                        {quotation.status || 'PENDING'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
-                        <CalendarIcon className="h-4 w-4 mr-1" />
-                        {formatDate(new Date(Date.now() + quotation.validityDays * 24 * 60 * 60 * 1000))}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                        {quotation.serviceDetails?.serviceDate ? formatDate(new Date(quotation.serviceDetails.serviceDate)) : 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-1">
                         <button
                           onClick={() => setViewingQuotation(quotation)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Details"
+                          className="text-indigo-600 hover:text-indigo-900 p-1"
+                          title="View quotation"
                         >
-                          <EyeIcon className="h-5 w-5" />
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => generatePDF(quotation)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Download PDF"
+                        >
+                          <DocumentArrowDownIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => shareToWhatsApp(quotation)}
+                          className="text-green-600 hover:text-green-900 p-1"
+                          title="Share to WhatsApp"
+                        >
+                          <ShareIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => openEdit(quotation)}
-                          className="text-green-600 hover:text-green-900"
-                          title="Edit"
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="Edit quotation"
                         >
-                          <PencilIcon className="h-5 w-5" />
+                          <PencilIcon className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => exportToPDF(quotation)}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Export PDF"
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this quotation?')) {
+                              const updatedQuotations = quotations.filter(i => i.id !== quotation.id);
+                              setQuotations(updatedQuotations);
+                              localStorage.setItem('anjaneya_quotations', JSON.stringify(updatedQuotations));
+                              toast.success('Quotation deleted successfully');
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete quotation"
                         >
-                          <PrinterIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => duplicateQuotation(quotation)}
-                          className="text-orange-600 hover:text-orange-900"
-                          title="Duplicate"
-                        >
-                          <DocumentArrowDownIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => deleteQuotation(quotation.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete"
-                        >
-                          <TrashIcon className="h-5 w-5" />
+                          <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -594,118 +1761,97 @@ const QuotationManagement: React.FC = () => {
               </tbody>
             </table>
           </div>
-
-          {filteredQuotations.length === 0 && (
-            <div className="text-center py-12">
-              <DocumentArrowDownIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No quotations found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {quotations.length === 0 
-                  ? 'Get started by creating a new quotation.' 
-                  : 'Try adjusting your search criteria.'
-                }
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowEnhancedForm(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-w-0 whitespace-nowrap"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">New Quotation</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         /* Grid View */
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredQuotations.map((quotation) => (
-            <div key={quotation.id} className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200">
+            <div key={quotation.id} className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center">
-                        <span className="text-sm font-medium text-white">
-                          {quotation.customer?.name?.charAt(0).toUpperCase()}
-                        </span>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">{quotation.customer?.name || 'N/A'}</h3>
+                    <p className="text-sm text-gray-500">{quotation.invoiceNumber || 'N/A'}</p>
                       </div>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {quotation.customer?.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">{quotation.invoiceNumber}</p>
-                    </div>
-                  </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(quotation.status)}`}>
-                    {getStatusDisplayName(quotation.status)}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(quotation.status || 'PENDING')}`}>
+                    {quotation.status || 'PENDING'}
                   </span>
                 </div>
 
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center text-sm text-gray-600">
                     <PhoneIcon className="h-4 w-4 mr-2" />
-                    {quotation.customer?.phoneNumber}
+                    {quotation.customer?.phoneNumber || 'N/A'}
                   </div>
-                  <div className="flex items-start text-sm text-gray-600">
-                    <MapPinIcon className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>{quotation.serviceDetails?.location || 'Not specified'}</span>
+                  {quotation.customer?.email && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <EnvelopeIcon className="h-4 w-4 mr-2" />
+                      {quotation.customer.email}
+                    </div>
+                  )}
+                  <div className="flex items-center text-sm text-gray-600">
+                    <MapPinIcon className="h-4 w-4 mr-2" />
+                    {quotation.serviceDetails?.location || 'N/A'}
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <CalendarIcon className="h-4 w-4 mr-2" />
-                    Valid till: {formatDate(new Date(Date.now() + quotation.validityDays * 24 * 60 * 60 * 1000))}
+                    {quotation.serviceDetails?.serviceDate ? formatDate(new Date(quotation.serviceDetails.serviceDate)) : 'N/A'}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <CurrencyRupeeIcon className="h-4 w-4 mr-2" />
+                    ₹{(quotation.totalAmount || 0).toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Service: {quotation.serviceDetails?.serviceType || 'N/A'}
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(quotation.totalAmount)}
-                    </p>
-                    <p className="text-sm text-gray-500">{quotation.items?.length || 0} items</p>
+                  <div className="text-xs text-gray-500">
+                    Due: {quotation.dueDate ? formatDate(new Date(quotation.dueDate)) : 'N/A'}
                   </div>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => setViewingQuotation(quotation)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="View Details"
+                      className="text-indigo-600 hover:text-indigo-900 p-1"
+                      title="View quotation"
                     >
-                      <EyeIcon className="h-5 w-5" />
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => generatePDF(quotation)}
+                      className="text-blue-600 hover:text-blue-900 p-1"
+                      title="Download PDF"
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => shareToWhatsApp(quotation)}
+                      className="text-green-600 hover:text-green-900 p-1"
+                      title="Share to WhatsApp"
+                    >
+                      <ShareIcon className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => openEdit(quotation)}
-                      className="text-green-600 hover:text-green-900"
-                      title="Edit"
+                      className="text-gray-600 hover:text-gray-900 p-1"
+                      title="Edit quotation"
                     >
-                      <PencilIcon className="h-5 w-5" />
+                      <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => exportToPDF(quotation)}
-                      className="text-purple-600 hover:text-purple-900"
-                      title="Export PDF"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this quotation?')) {
+                          const updatedQuotations = quotations.filter(i => i.id !== quotation.id);
+                          setQuotations(updatedQuotations);
+                          localStorage.setItem('anjaneya_quotations', JSON.stringify(updatedQuotations));
+                          toast.success('Quotation deleted successfully');
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-900 p-1"
+                      title="Delete quotation"
                     >
-                      <PrinterIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => duplicateQuotation(quotation)}
-                      className="text-orange-600 hover:text-orange-900"
-                      title="Duplicate"
-                    >
-                      <DocumentArrowDownIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => deleteQuotation(quotation.id)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Delete"
-                    >
-                      <TrashIcon className="h-5 w-5" />
+                      <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -715,142 +1861,687 @@ const QuotationManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Enhanced Invoice Form Modal - Direct usage without wrapper */}
-      {showEnhancedForm && (
-        <EnhancedInvoiceForm
-          onClose={() => setShowEnhancedForm(false)}
-          onSave={onQuotationCreated}
-        />
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && editingQuotation && (
+      {/* Create/Edit Modal */}
+      {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowEditModal(false)} />
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleCloseModal}></div>
             
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full max-h-[90vh] overflow-y-auto">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Edit Quotation
-                </h3>
-                <div className="space-y-4">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <form onSubmit={handleSubmit}>
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                        Create New Quotation
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Depth (feet)</label>
+                          <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
+                            Customer *
+                          </label>
+                          <select
+                            id="customerId"
+                            required
+                            value={formData.customerId}
+                            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">Select a customer</option>
+                            {customers.map(customer => (
+                              <option key={customer.id} value={customer.id}>
+                                {customer.name} - {customer.phoneNumber}
+                              </option>
+                            ))}
+                          </select>
+                  </div>
+
+                    <div>
+                           <label htmlFor="serviceType" className="block text-sm font-medium text-gray-700">
+                             Service Type *
+                           </label>
+                           <div className="mt-1">
+                             {!showCustomServiceInput ? (
+                               <div className="flex space-x-2">
+                      <select
+                                   id="serviceType"
+                                   required
+                                   value={formData.serviceType}
+                                   onChange={(e) => {
+                                     if (e.target.value === 'custom') {
+                                       setShowCustomServiceInput(true);
+                                     } else {
+                                       setFormData({ ...formData, serviceType: e.target.value });
+                                     }
+                                   }}
+                                   className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                 >
+                                   <option value="">Select a service type</option>
+                                   {serviceTypes.map(type => (
+                                     <option key={type} value={type}>{type}</option>
+                                   ))}
+                                   <option value="custom">+ Add Custom Service Type</option>
+                      </select>
+                               </div>
+                             ) : (
+                               <div className="flex space-x-2">
+                                 <input
+                                   type="text"
+                                   value={formData.customServiceType}
+                                   onChange={(e) => setFormData({ ...formData, customServiceType: e.target.value })}
+                                   className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Enter custom service type"
+                                 />
+                                 <button
+                                   type="button"
+                                   onClick={addCustomServiceType}
+                                   className="px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                                 >
+                                   Add
+                                 </button>
+                                 <button
+                                   type="button"
+                                   onClick={() => {
+                                     setShowCustomServiceInput(false);
+                                     setFormData({ ...formData, customServiceType: '' });
+                                   }}
+                                   className="px-3 py-2 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700"
+                                 >
+                                   Cancel
+                                 </button>
+                               </div>
+                             )}
+                           </div>
+                    </div>
+
+                    <div>
+                          <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                            Location *
+                          </label>
+                      <input
+                            type="text"
+                            id="location"
+                            required
+                            value={formData.location}
+                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Service location"
+                      />
+                    </div>
+
+                        <div>
+                          <label htmlFor="serviceDate" className="block text-sm font-medium text-gray-700">
+                            Service Date *
+                          </label>
+                          <input
+                            type="date"
+                            id="serviceDate"
+                            required
+                            value={formData.serviceDate}
+                            onChange={(e) => setFormData({ ...formData, serviceDate: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                            Description
+                          </label>
+                          <textarea
+                            id="description"
+                            rows={3}
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Service description"
+                          />
+                        </div>
+
+                        
+                       </div>
+
+                       {/* Slab Rate Calculation */}
+                       <div className="mt-6">
+                         <h4 className="text-md font-medium text-gray-900 mb-3">Borewell Slab Rate Calculation</h4>
+                          
+                                                     {/* Slab Rate Type Selection */}
+                           <div className="mb-4">
+                             <label className="block text-sm font-medium text-gray-700 mb-2">
+                               Slab Rate Type
+                             </label>
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                               <label className="flex items-center p-3 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+                                 <input
+                                   type="radio"
+                                   name="slabRateType"
+                                   value="1"
+                                   checked={formData.slabRateType === '1'}
+                                   onChange={(e) => setFormData({ ...formData, slabRateType: e.target.value })}
+                                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                 />
+                                 <div className="ml-3">
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type1}</div>
+                                   <div className="text-xs text-gray-500">1-300 feet at ₹{slabRateConfig.type1.rate1_300}/ft</div>
+                                 </div>
+                               </label>
+                               
+                               <label className="flex items-center p-3 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+                                 <input
+                                   type="radio"
+                                   name="slabRateType"
+                                   value="2"
+                                   checked={formData.slabRateType === '2'}
+                                   onChange={(e) => setFormData({ ...formData, slabRateType: e.target.value })}
+                                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                 />
+                                 <div className="ml-3">
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type2}</div>
+                                   <div className="text-xs text-gray-500">1-500 feet at ₹{slabRateConfig.type2.rate1_500}/ft</div>
+                                 </div>
+                               </label>
+                               
+                               <label className="flex items-center p-3 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+                                 <input
+                                   type="radio"
+                                   name="slabRateType"
+                                   value="3"
+                                   checked={formData.slabRateType === '3'}
+                                   onChange={(e) => setFormData({ ...formData, slabRateType: e.target.value })}
+                                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                 />
+                                 <div className="ml-3">
+                                   <div className="text-sm font-medium text-gray-900">{slabNames.type3}</div>
+                                   <div className="text-xs text-gray-500">Rebore/Extension</div>
+                                 </div>
+                               </label>
+                             </div>
+                           </div>
+
+                           
+                          
+                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                             <label htmlFor="totalDepth" className="block text-sm font-medium text-gray-700">
+                               Total Depth (feet)
+                             </label>
                     <input
                       type="number"
-                      value={editDepth}
-                      onChange={(e) => setEditDepth(Number(e.target.value))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               id="totalDepth"
+                               value={formData.totalDepth}
+                               onChange={(e) => setFormData({ ...formData, totalDepth: parseFloat(e.target.value) || 0 })}
+                               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="0"
+                    />
+                  </div>
+                    <div>
+                             <label htmlFor="pvc7Inch" className="block text-sm font-medium text-gray-700">
+                               7" PVC (feet)
+                             </label>
+                      <input
+                        type="number"
+                               id="pvc7Inch"
+                               value={formData.pvc7Inch}
+                               onChange={(e) => setFormData({ ...formData, pvc7Inch: parseFloat(e.target.value) || 0 })}
+                               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="0"
+                      />
+                    </div>
+                  <div>
+                             <label htmlFor="pvc10Inch" className="block text-sm font-medium text-gray-700">
+                               10" PVC (feet)
+                             </label>
+                    <input
+                      type="number"
+                               id="pvc10Inch"
+                               value={formData.pvc10Inch}
+                               onChange={(e) => setFormData({ ...formData, pvc10Inch: parseFloat(e.target.value) || 0 })}
+                               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">7" PVC (feet)</label>
+                             <label htmlFor="bata" className="block text-sm font-medium text-gray-700">
+                               BATA (₹)
+                             </label>
+                      <input
+                        type="number"
+                               id="bata"
+                               value={formData.bata}
+                               onChange={(e) => setFormData({ ...formData, bata: parseFloat(e.target.value) || 2000 })}
+                               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="2000"
+                      />
+                    </div>
+                    <div>
+                             <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700">
+                               Advance Amount (₹)
+                             </label>
                     <input
                       type="number"
-                      value={editPVC7}
-                      onChange={(e) => setEditPVC7(Number(e.target.value))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                               id="advanceAmount"
+                               value={formData.advanceAmount}
+                               onChange={(e) => setFormData({ ...formData, advanceAmount: parseFloat(e.target.value) || 0 })}
+                               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="0"
+                        min="0"
                     />
+                           </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">10" PVC (feet)</label>
-                    <input
-                      type="number"
-                      value={editPVC10}
-                      onChange={(e) => setEditPVC10(Number(e.target.value))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    />
+
+                                                     {/* Existing Bore Fields for Type 3 */}
+                           {formData.slabRateType === '3' && (
+                             <div className="mt-4 space-y-4">
+                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                   <label htmlFor="existingBoreDepth" className="block text-sm font-medium text-gray-700">
+                                     Existing Bore Depth (feet)
+                                   </label>
+                      <input
+                                     type="number"
+                                     id="existingBoreDepth"
+                                     value={formData.existingBoreDepth}
+                                     onChange={(e) => setFormData({ ...formData, existingBoreDepth: parseFloat(e.target.value) || 0 })}
+                                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                     placeholder="0"
+                                   />
+                </div>
+                      <div>
+                                   <label htmlFor="existingBoreRate" className="block text-sm font-medium text-gray-700">
+                                     Existing Bore Rate (₹/feet)
+                                   </label>
+                        <input
+                          type="number"
+                                     id="existingBoreRate"
+                                     value={formData.existingBoreRate}
+                                     onChange={(e) => setFormData({ ...formData, existingBoreRate: parseFloat(e.target.value) || 40 })}
+                                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                     placeholder="40"
+                        />
+              </div>
+                                 <div>
+                                   <label htmlFor="reboreSlabType" className="block text-sm font-medium text-gray-700">
+                                     Use Slab Rate Type
+                                   </label>
+                                   <select
+                                     id="reboreSlabType"
+                                     value={formData.reboreSlabType}
+                                     onChange={(e) => setFormData({ ...formData, reboreSlabType: e.target.value })}
+                                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                   >
+                                     <option value="1">{slabNames.type1} (1-300 ft system)</option>
+                                     <option value="2">{slabNames.type2} (1-500 ft system)</option>
+                                   </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Labour & Transportation</label>
-                    <input
-                      type="number"
-                      value={editBata}
-                      onChange={(e) => setEditBata(Number(e.target.value))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    />
+                                </div>
+                               <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded border">
+                                 <strong>Note:</strong> New drilling will start from {formData.existingBoreDepth} feet and use {formData.reboreSlabType === '1' ? slabNames.type1 : slabNames.type2} slab rate system.
+                            </div>
+                          </div>
+                        )}
+
+                         {/* Slab Rate Summary */}
+                         {formData.totalDepth > 0 && (
+                           <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                             <h5 className="text-sm font-medium text-gray-900 mb-2">Slab Rate Summary:</h5>
+                             
+                                                           {/* Depth-based breakdown */}
+                              <div className="mb-3">
+                                <h6 className="text-xs font-medium text-gray-700 mb-2">
+                                  {formData.slabRateType === '1' ? `${slabNames.type1}: 1-300 feet Slab Rate` : 
+                                   formData.slabRateType === '2' ? `${slabNames.type2}: 1-500 feet Slab Rate` : 
+                                   `${slabNames.type3}: Rebore/Extension Slab Rate`}
+                                </h6>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs max-h-64 overflow-y-auto">
+                                                                     {formData.slabRateType === '1' && (
+                                     renderSlabRateBreakdown(formData.totalDepth, slabRateConfig.type1, 'Drilling', 0)
+                                   )}
+                                    
+                                   {formData.slabRateType === '2' && (
+                                     renderSlabRateBreakdown(formData.totalDepth, slabRateConfig.type2, 'Drilling', 0)
+                                   )}
+                                    
+                                   {formData.slabRateType === '3' && (
+                                     <>
+                                       {formData.existingBoreDepth > 0 && (
+                                         <div className="bg-purple-50 p-2 rounded border">
+                                           <span className="text-gray-600">Existing Bore:</span>
+                                           <div className="font-medium">{formData.existingBoreDepth} ft × ₹{formData.existingBoreRate} = ₹{(formData.existingBoreDepth * formData.existingBoreRate).toFixed(2)}</div>
+                              </div>
+                            )}
+                                       {formData.totalDepth > formData.existingBoreDepth && (
+                                         <div className="bg-blue-50 p-2 rounded border">
+                                           <span className="text-gray-600">New Drilling:</span>
+                                           <div className="font-medium">
+                                             {renderSlabRateBreakdown(formData.totalDepth - formData.existingBoreDepth, slabRateConfig.type3, 'New Drilling', formData.existingBoreDepth)}
+                                           </div>
+                              </div>
+                            )}
+                                     </>
+                                   )}
+                                </div>
+                              </div>
+                             
+                                                           {/* Material breakdown */}
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                               <div>
+                                 <span className="text-gray-600">7" PVC:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().pvc7InchRate.toFixed(2)}</div>
+                               </div>
+                               <div>
+                                 <span className="text-gray-600">10" PVC:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().pvc10InchRate.toFixed(2)}</div>
+                               </div>
+                               <div>
+                                 <span className="text-gray-600">BATA:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().bata.toFixed(2)}</div>
+                               </div>
+                                <div>
+                                  <span className="text-gray-600">Total Drilling:</span>
+                                  <div className="font-medium">₹{calculateSlabRates().slabRate.toFixed(2)}</div>
+                             </div>
+                              </div>
+                              
+                              {/* Existing Bore Cost for Type 3 */}
+                              {formData.slabRateType === '3' && calculateSlabRates().existingBoreCost > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                              <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Existing Bore Cost:</span>
+                                    <span className="font-medium">₹{calculateSlabRates().existingBoreCost.toFixed(2)}</span>
+                                  </div>
+                              </div>
+                            )}
+                             <div className="mt-2 pt-2 border-t border-gray-200">
+                               <span className="text-sm font-medium text-gray-900">Total Slab Rate: ₹{calculateSlabRates().total.toFixed(2)}</span>
+                          </div>
+                           </div>
+                         )}
+                        </div>
+
+                                             {/* Invoice Summary */}
+                       {formData.totalDepth > 0 && (
+                         <div className="mt-6">
+                           <h4 className="text-md font-medium text-gray-900 mb-3">Invoice Summary</h4>
+                           <div className="bg-gray-50 p-4 rounded-md">
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                               <div>
+                                 <span className="text-gray-600">Total Drilling:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().slabRate.toFixed(2)}</div>
+                            </div>
+                               <div>
+                                 <span className="text-gray-600">7" PVC:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().pvc7InchRate.toFixed(2)}</div>
+                               </div>
+                               <div>
+                                 <span className="text-gray-600">10" PVC:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().pvc10InchRate.toFixed(2)}</div>
+                               </div>
+                               <div>
+                                 <span className="text-gray-600">BATA:</span>
+                                 <div className="font-medium">₹{calculateSlabRates().bata.toFixed(2)}</div>
+                               </div>
+                             </div>
+                             <div className="border-t border-gray-200 pt-4">
+                                <div className="text-right space-y-1">
+                                  <div className="text-sm text-gray-600">
+                                    Subtotal: ₹{calculateSlabRates().total.toFixed(2)}
+                                  </div>
+                                  {formData.enableTax && (
+                                    <div className="text-sm text-gray-600">
+                                      Tax ({formData.taxRate}%): ₹{(calculateSlabRates().total * (formData.taxRate / 100)).toFixed(2)}
+                              </div>
+                            )}
+                                  <div className="text-lg font-medium text-gray-900">
+                                    Total: ₹{formData.enableTax ? (calculateSlabRates().total * (1 + formData.taxRate / 100)).toFixed(2) : calculateSlabRates().total.toFixed(2)}
+                                  </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                      {/* Tax Options */}
+                      <div className="mt-6">
+                        <h4 className="text-md font-medium text-gray-900 mb-3">Tax Options</h4>
+                        <div className="flex items-center space-x-4">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.enableTax}
+                              onChange={(e) => setFormData({ ...formData, enableTax: e.target.checked })}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Enable GST</span>
+                          </label>
+                          {formData.enableTax && (
+                            <div className="flex items-center space-x-2">
+                              <label className="text-sm text-gray-700">Rate:</label>
+                              <input
+                                type="number"
+                                value={formData.taxRate}
+                                onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 18 })}
+                                className="w-20 border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                              />
+                              <span className="text-sm text-gray-700">%</span>
+                      </div>
+                    )}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                            Notes
+                          </label>
+                          <textarea
+                            id="notes"
+                            rows={3}
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Additional notes"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="terms" className="block text-sm font-medium text-gray-700">
+                            Terms
+                          </label>
+                          <textarea
+                            id="terms"
+                            rows={3}
+                            value={formData.terms}
+                            onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                            className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Payment terms"
+                          />
+                        </div>
+                      </div>
                   </div>
                 </div>
               </div>
+              
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
-                  onClick={updateQuotation}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                    type="submit"
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  Update
+                    Create Invoice
                 </button>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                    type="button"
+                    onClick={handleCloseModal}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Cancel
                 </button>
               </div>
+              </form>
             </div>
           </div>
         </div>
       )}
 
-      {/* View Modal */}
+      {/* View Invoice Modal */}
       {viewingQuotation && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setViewingQuotation(null)} />
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleCloseViewModal}></div>
             
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[90vh] overflow-y-auto">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Quotation Details - {viewingQuotation.invoiceNumber}
+                        Invoice #{viewingQuotation.invoiceNumber || 'N/A'}
                   </h3>
-                  <button
-                    onClick={() => setViewingQuotation(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingQuotation.status || 'PENDING')}`}>
+                        {viewingQuotation.status || 'PENDING'}
+                      </span>
                 </div>
                 
-                <div className="border-t border-gray-200 pt-4">
-                  <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Customer</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{viewingQuotation.customer?.name}</dd>
+                    {/* Company Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-lg mb-6">
+                      <h1 className="text-2xl font-bold text-center">ANJANEYA BOREWELLS</h1>
+                      <p className="text-center text-blue-100">ஆழமான நம்பிக்கை (Deep Trust)</p>
                     </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{viewingQuotation.customer?.phoneNumber}</dd>
+                    
+                    {/* Invoice Details Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             {/* Invoice Info */}
+                       <div className="bg-gray-50 p-4 rounded-lg">
+                         <h4 className="font-medium text-gray-900 mb-3">Invoice Details</h4>
+                         <div className="space-y-2 text-sm">
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Invoice #:</span>
+                             <span className="font-medium">{viewingQuotation.invoiceNumber || 'N/A'}</span>
                     </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">Service Location</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{viewingQuotation.serviceDetails?.location}</dd>
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Date:</span>
+                             <span>{viewingQuotation.invoiceDate ? (() => {
+                               try {
+                                 const date = new Date(viewingQuotation.invoiceDate);
+                                 return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                               } catch {
+                                 return 'N/A';
+                               }
+                             })() : 'N/A'}</span>
                     </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Quotation Date</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{formatDate(viewingQuotation.quotationDate)}</dd>
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Due Date:</span>
+                             <span>{viewingQuotation.dueDate ? (() => {
+                               try {
+                                 const date = new Date(viewingQuotation.dueDate);
+                                 return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                               } catch {
+                                 return 'N/A';
+                               }
+                             })() : 'N/A'}</span>
                     </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Valid Till</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {formatDate(new Date(Date.now() + viewingQuotation.validityDays * 24 * 60 * 60 * 1000))}
-                      </dd>
                     </div>
-                  </dl>
                 </div>
 
-                <div className="mt-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Items</h4>
-                  <div className="overflow-x-auto">
+                                             {/* Service Info */}
+                       <div className="bg-gray-50 p-4 rounded-lg">
+                         <h4 className="font-medium text-gray-900 mb-3">Service Details</h4>
+                         <div className="space-y-2 text-sm">
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Type:</span>
+                             <span className="font-medium">{viewingQuotation.serviceDetails?.serviceType || 'N/A'}</span>
+                           </div>
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Location:</span>
+                             <span>{viewingQuotation.serviceDetails?.location || 'N/A'}</span>
+                           </div>
+                           <div className="flex justify-between">
+                             <span className="text-gray-600">Date:</span>
+                             <span>{viewingQuotation.serviceDetails?.serviceDate ? (() => {
+                               try {
+                                 const date = new Date(viewingQuotation.serviceDetails.serviceDate);
+                                 return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                               } catch {
+                                 return 'N/A';
+                               }
+                             })() : 'N/A'}</span>
+                           </div>
+                         </div>
+                       </div>
+                    </div>
+                    
+                                         {/* Customer Details */}
+                     <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
+                       <h4 className="font-medium text-gray-900 mb-3">Bill To</h4>
+                       <div className="space-y-1 text-sm">
+                         <p className="font-medium text-gray-900">{viewingQuotation.customer?.name || 'N/A'}</p>
+                         <p className="text-gray-600">{viewingQuotation.customer?.address || 'N/A'}</p>
+                         <p className="text-gray-600">Phone: {viewingQuotation.customer?.phoneNumber || 'N/A'}</p>
+                         {viewingQuotation.customer?.whatsappNumber && (
+                           <p className="text-gray-600">WhatsApp: {viewingQuotation.customer.whatsappNumber}</p>
+                         )}
+                         {viewingQuotation.customer?.email && (
+                           <p className="text-gray-600">Email: {viewingQuotation.customer.email}</p>
+                         )}
+                       </div>
+                     </div>
+                    
+                                         {/* Slab Rate Details (if available) */}
+                     {viewingQuotation.serviceDetails?.serviceType === 'Bore Drilling' && (viewingQuotation.items || []).length > 0 && (
+                       <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+                         <h4 className="font-medium text-gray-900 mb-3">Slab Rate Calculation</h4>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                           {(viewingQuotation.items || []).filter(item => item.description && item.description.includes('Borewell Drilling')).map((item, index) => (
+                             <div key={index} className="space-y-1">
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">Drilling Depth:</span>
+                                 <span className="font-medium">{item.quantity || 0} feet</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">Rate per foot:</span>
+                                 <span className="font-medium">₹{((item.amount || 0) / (item.quantity || 1)).toFixed(2)}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">Total Drilling:</span>
+                                 <span className="font-medium">₹{(item.amount || 0).toFixed(2)}</span>
+                               </div>
+                             </div>
+                           ))}
+                           
+                           {(viewingQuotation.items || []).filter(item => item.description && item.description.includes('7" PVC')).map((item, index) => (
+                             <div key={index} className="space-y-1">
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">7" PVC Casing:</span>
+                                 <span className="font-medium">{item.quantity || 0} feet</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">PVC Calculation:</span>
+                                 <span className="font-medium">{item.quantity || 0} × ₹120/ft = ₹{(item.amount || 0).toFixed(2)}</span>
+                               </div>
+                             </div>
+                           ))}
+                           
+                           {(viewingQuotation.items || []).filter(item => item.description && item.description.includes('10" PVC')).map((item, index) => (
+                             <div key={index} className="space-y-1">
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">10" PVC Casing:</span>
+                                 <span className="font-medium">{item.quantity || 0} feet</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <span className="text-gray-600">PVC Calculation:</span>
+                                 <span className="font-medium">{item.quantity || 0} × ₹180/ft = ₹{(item.amount || 0).toFixed(2)}</span>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                    
+                                         {/* Items Table */}
+                     {(viewingQuotation.items || []).length > 0 ? (
+                       <div className="bg-white border border-gray-200 rounded-lg mb-6 overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
@@ -862,42 +2553,431 @@ const QuotationManagement: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {viewingQuotation.items?.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.unit}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(item.rate)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(item.amount)}</td>
+                             {(viewingQuotation.items || []).map((item, index) => (
+                               <tr key={item.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description || 'N/A'}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity || 0}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.unit || 'N/A'}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{(item.rate || 0).toFixed(2)}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{(item.amount || 0).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                     ) : (
+                       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                         <p className="text-gray-500">No items found for this invoice</p>
                 </div>
-
-                <div className="mt-6 border-t border-gray-200 pt-4">
-                  <div className="flex justify-end">
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Subtotal:</dt>
-                        <dd className="text-sm font-medium text-gray-900">{formatCurrency(viewingQuotation.subtotal)}</dd>
+                     )}
+                     
+                     {/* Totals */}
+                     <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                       <div className="space-y-2 text-right">
+                         <div className="flex justify-between text-sm">
+                           <span className="text-gray-600">Subtotal:</span>
+                           <span className="font-medium">₹{(viewingQuotation.subtotal || 0).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Tax (18%):</dt>
-                        <dd className="text-sm font-medium text-gray-900">{formatCurrency(viewingQuotation.taxAmount)}</dd>
+                         {viewingQuotation.taxAmount > 0 && (
+                           <div className="flex justify-between text-sm">
+                             <span className="text-gray-600">Tax ({(viewingQuotation.taxRate * 100).toFixed(0)}%):</span>
+                             <span className="font-medium">₹{(viewingQuotation.taxAmount || 0).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between border-t border-gray-200 pt-2">
-                        <dt className="text-base font-medium text-gray-900">Total:</dt>
-                        <dd className="text-base font-medium text-gray-900">{formatCurrency(viewingQuotation.totalAmount)}</dd>
+                         )}
+                         <div className="flex justify-between text-lg font-bold text-gray-900 border-t border-gray-200 pt-2">
+                           <span>Total:</span>
+                           <span>₹{(viewingQuotation.totalAmount || 0).toFixed(2)}</span>
                       </div>
-                    </dl>
+                  </div>
+                </div>
+                    
+                    {/* Notes and Terms */}
+                    {(viewingQuotation.notes || viewingQuotation.terms) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        {viewingQuotation.notes && (
+                          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                            <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+                            <p className="text-sm text-gray-700">{viewingQuotation.notes}</p>
+              </div>
+                        )}
+                        
+                        {viewingQuotation.terms && (
+                          <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
+                            <h4 className="font-medium text-gray-900 mb-2">Terms & Conditions</h4>
+                            <p className="text-sm text-gray-700 whitespace-pre-line">{viewingQuotation.terms}</p>
+            </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+              
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                 <button
+                   type="button"
+                   onClick={() => generatePDF(viewingQuotation)}
+                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                 >
+                   Download PDF
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => { if (viewingQuotation) openEdit(viewingQuotation); }}
+                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:ml-3 sm:w-auto sm:text-sm"
+                 >
+                   Edit
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => shareToWhatsApp(viewingQuotation)}
+                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+                 >
+                   Share to WhatsApp
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleCloseViewModal}
+                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                 >
+                   Close
+                 </button>
+               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Invoice Modal */}
+      {showEditModal && editingQuotation && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowEditModal(false)}></div>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  // persist update + recalc from edited depth/PVC
+                  if (!editingQuotation) return;
+                  // rebuild items from edited inputs using calculated rates
+                  const newItems: InvoiceItem[] = [];
+                  
+                  let newSubtotal = 0;
+                  let newTax = 0;
+                  let newTotal = 0;
+
+                  // Use calculated rates if available, otherwise fallback to simple calculation
+                  if (editCalculatedRates) {
+                    // Check if it's a custom slab
+                    const customSlab = customSlabs.find(slab => slab.id === editSlabRateType);
+                    
+                    // Add drilling service item with calculated slab cost
+                    if (editCalculatedRates.slabCost > 0) {
+                      newItems.push({ 
+                        id: `drill_${Date.now()}`, 
+                        description: `Drilling - ${editDepth} feet (${customSlab ? customSlab.name : slabNames[`type${editSlabRateType}` as keyof typeof slabNames]})`, 
+                        quantity: editDepth, 
+                        unit: 'feet', 
+                        rate: editCalculatedRates.slabCost / editDepth, 
+                        amount: editCalculatedRates.slabCost, 
+                        type: 'service' 
+                      });
+                    }
+                    
+                    // Add PVC items with calculated costs
+                    if (editCalculatedRates.pvc7Cost > 0) {
+                      newItems.push({ 
+                        id: `pvc7_${Date.now()}`, 
+                        description: '7" PVC Casing', 
+                        quantity: editPVC7, 
+                        unit: 'feet', 
+                        rate: editPVC7Rate, 
+                        amount: editCalculatedRates.pvc7Cost, 
+                        type: 'material' 
+                      });
+                    }
+                    
+                    if (editCalculatedRates.pvc10Cost > 0) {
+                      newItems.push({ 
+                        id: `pvc10_${Date.now()}`, 
+                        description: '10" PVC Casing', 
+                        quantity: editPVC10, 
+                        unit: 'feet', 
+                        rate: editPVC10Rate, 
+                        amount: editCalculatedRates.pvc10Cost, 
+                        type: 'material' 
+                      });
+                    }
+                    
+                    // Add Bata
+                    if (editCalculatedRates.bata > 0) {
+                      newItems.push({ 
+                        id: `bata_${Date.now()}`, 
+                        description: 'Bata', 
+                        quantity: 1, 
+                        unit: 'service', 
+                        rate: editBata, 
+                        amount: editCalculatedRates.bata, 
+                        type: 'service' 
+                      });
+                    }
+                    
+                    newSubtotal = editCalculatedRates.subtotal;
+                    newTax = editCalculatedRates.taxAmount;
+                    newTotal = editCalculatedRates.total;
+                  } else {
+                    // Fallback to simple calculation
+                    if (editDepth > 0) {
+                      newItems.push({ id: `drill_${Date.now()}`, description: 'Drilling', quantity: editDepth, unit: 'feet', rate: slabRateConfig.type1.rate1_300, amount: editDepth * slabRateConfig.type1.rate1_300, type: 'service' });
+                    }
+                    if (editPVC7 > 0) {
+                      newItems.push({ id: `pvc7_${Date.now()}`, description: '7" PVC', quantity: editPVC7, unit: 'feet', rate: editPVC7Rate, amount: editPVC7 * editPVC7Rate, type: 'material' });
+                    }
+                    if (editPVC10 > 0) {
+                      newItems.push({ id: `pvc10_${Date.now()}`, description: '10" PVC', quantity: editPVC10, unit: 'feet', rate: editPVC10Rate, amount: editPVC10 * editPVC10Rate, type: 'material' });
+                    }
+                    if (editBata > 0) {
+                      newItems.push({ id: `bata_${Date.now()}`, description: 'BATA', quantity: 1, unit: 'Per Bore', rate: editBata, amount: editBata, type: 'additional' });
+                    }
+                    newSubtotal = newItems.reduce((s, it) => s + (it.amount || 0), 0);
+                    newTax = 0;
+                    newTotal = newSubtotal + newTax;
+                  }
+                  const updatedQuotations = quotations.map((i) =>
+                    i.id === editingQuotation.id ? applyEditsToInvoice(i, { ...editingQuotation, items: newItems, subtotal: newSubtotal, taxAmount: newTax, totalAmount: newTotal, pendingAmount: Math.max(newTotal - (editingQuotation.paidAmount || 0), 0) }) : i
+                  );
+                  setQuotations(updatedQuotations);
+                  setFilteredQuotations(updatedQuotations);
+                  localStorage.setItem('anjaneya_quotations', JSON.stringify(updatedQuotations));
+                  
+                  // Update viewing quotation if it's the same one being edited
+                  if (viewingQuotation && viewingQuotation.id === editingQuotation.id) {
+                    const updatedViewingQuotation = updatedQuotations.find(quo => quo.id === editingQuotation.id);
+                    if (updatedViewingQuotation) {
+                      setViewingQuotation(updatedViewingQuotation);
+                    }
+                  }
+                  
+                  toast.success('Quotation updated successfully!');
+                  setShowEditModal(false);
+                }}
+              >
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Edit Quotation</h3>
+                  
+                  {/* Auto-Calculation Section */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 className="text-md font-medium text-blue-900 mb-3">Auto-Calculation Settings</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Slab Rate Type
+                        </label>
+                        <select
+                          value={editSlabRateType}
+                          onChange={(e) => setEditSlabRateType(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="1">{slabNames.type1}: Standard (1-300, 301-400...)</option>
+                          <option value="2">{slabNames.type2}: Enhanced (1-100, 101-200...)</option>
+                          <option value="3">{slabNames.type3}: Manual Configuration</option>
+                          {customSlabs.map((slab) => (
+                            <option key={slab.id} value={slab.id}>
+                              {slab.name}: Custom ({slab.ranges.length} ranges)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Starting Rate (₹/ft)
+                        </label>
+                        <input
+                          type="number"
+                          value={editStartingRate}
+                          onChange={(e) => setEditStartingRate(parseFloat(e.target.value) || 75)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="75"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Total Depth (feet)
+                        </label>
+                        <input
+                          type="number"
+                          value={editDepth}
+                          onChange={(e) => setEditDepth(parseFloat(e.target.value) || 0)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter depth"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calculation Results */}
+                  {editCalculatedRates && (
+                    <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                      <h4 className="text-md font-medium text-green-900 mb-3">Calculation Results</h4>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Slab Cost:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.slabCost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">7" PVC:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.pvc7Cost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">10" PVC:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.pvc10Cost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Bata:</span>
+                          <div className="font-semibold text-green-900">₹{editCalculatedRates.bata.toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-green-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-medium text-green-900">Total Amount:</span>
+                          <span className="text-2xl font-bold text-green-900">₹{editCalculatedRates.total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Status</label>
+                      <select
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editingQuotation.status}
+                        onChange={(e) => setEditingQuotation({ ...editingQuotation, status: e.target.value as any })}
+                      >
+                        <option value="PENDING">PENDING</option>
+                        <option value="PAID">PAID</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
+                      <input
+                        type="date"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editingQuotation.invoiceDate ? new Date(editingQuotation.invoiceDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}
+                        onChange={(e) => {
+                          const date = e.target.value ? new Date(e.target.value) : new Date();
+                          if (!isNaN(date.getTime())) {
+                            setEditingQuotation({ ...editingQuotation, invoiceDate: date });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                      <input
+                        type="date"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editingQuotation.dueDate ? new Date(editingQuotation.dueDate).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}
+                        onChange={(e) => {
+                          const date = e.target.value ? new Date(e.target.value) : new Date();
+                          if (!isNaN(date.getTime())) {
+                            setEditingQuotation({ ...editingQuotation, dueDate: date });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Advance/Paid Amount</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editingQuotation.paidAmount}
+                        onChange={(e) => setEditingQuotation({ ...editingQuotation, paidAmount: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">7" PVC (feet)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC7}
+                        onChange={(e) => setEditPVC7(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">7" PVC Rate (₹/ft)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC7Rate}
+                        onChange={(e) => setEditPVC7Rate(parseFloat(e.target.value) || 400)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">10" PVC (feet)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC10}
+                        onChange={(e) => setEditPVC10(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">10" PVC Rate (₹/ft)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editPVC10Rate}
+                        onChange={(e) => setEditPVC10Rate(parseFloat(e.target.value) || 700)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">BATA (₹)</label>
+                      <input
+                        type="number"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        value={editBata}
+                        onChange={(e) => setEditBata(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      rows={3}
+                      value={editingQuotation.notes || ''}
+                      onChange={(e) => setEditingQuotation({ ...editingQuotation, notes: e.target.value })}
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Terms</label>
+                    <textarea
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      rows={3}
+                      value={editingQuotation.terms || ''}
+                      onChange={(e) => setEditingQuotation({ ...editingQuotation, terms: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                  <button type="submit" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">Save</button>
+                  <button type="button" onClick={() => setShowEditModal(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Invoice Form */}
+      {showEnhancedForm && (
+        <EnhancedInvoiceForm
+          onClose={() => setShowEnhancedForm(false)}
+          onSave={handleEnhancedFormSubmit}
+        />
       )}
     </div>
   );
