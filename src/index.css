@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Permanent+Marker&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0284c7;
+  --color-secondary: #16a34a;
+  --font-sans: 'Outfit', sans-serif;
+  --font-marker: 'Permanent Marker', cursive;
+
+  /* Overrides for html2canvas compatibility (no oklch) */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+
+  --color-blue-100: #dbeafe;
+  --color-green-100: #dcfce7;
+  --color-green-600: #16a34a;
+  --color-green-800: #166534;
+
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-300: #fdba74;
+  --color-orange-600: #ea580c;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  /* Utility classes work here now */
+}

@@ -1,0 +1,164 @@
+import React, { useState } from 'react';
+import { useInvoices } from '../context/InvoiceContext';
+import type { InvoiceData } from '../types';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud } from 'lucide-react';
+
+const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
+    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo } = useInvoices();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const logoInputRef = React.useRef<HTMLInputElement>(null);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [showSettings, setShowSettings] = useState(false);
+
+    const filteredInvoices = invoices.filter(inv =>
+        inv.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.customer.phone.includes(searchTerm) ||
+        inv.customer.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.id.includes(searchTerm)
+    );
+
+
+    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            importBackup(e.target.files[0]);
+        }
+    };
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setLogo(reader.result as string);
+                alert("Logo updated!");
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="bg-slate-50 min-h-screen p-4 pb-20">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6">
+                {/* Branding Section */}
+                <div className='flex items-center gap-3 text-left'>
+                    {logo ? <img src={logo} className="w-14 h-14 rounded-xl object-contain bg-white shadow-md shadow-gray-200" /> : null}
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                            ANJANEYA BO<span className="text-red-600">R</span>EWELLS
+                        </h1>
+                        <p className="text-[10px] md:text-xs text-gray-600 font-bold mt-0.5 ml-1">ஆழமான நம்பிக்கை!..</p>
+                    </div>
+                </div>
+
+                {/* Settings Trigger */}
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                    <Settings size={24} />
+                </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-4">
+                <input
+                    type="text"
+                    placeholder="Search by name, phone, or invoice #..."
+                    className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+
+            {filteredInvoices.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                    <FileText size={48} className="mb-2 opacity-50" />
+                    <p>No invoices found</p>
+                    <button onClick={onCreate} className="mt-4 text-primary font-semibold">Create New</button>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredInvoices.map(inv => (
+                        <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center" onClick={() => onEdit(inv)}>
+                            <div>
+                                <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
+                                <p className="text-xs text-gray-500">{inv.customer.date} • #{inv.customer.invoiceNumber}</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="font-bold text-primary">₹{inv.totalAmount.toLocaleString()}</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); deleteInvoice(inv.id); }}
+                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-10 pointer-events-none px-4">
+                <button
+                    onClick={onCreate}
+                    className="absolute bottom-0 right-4 bg-primary text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-sky-700 pointer-events-auto"
+                >
+                    +
+                </button>
+            </div>
+
+            {/* Settings Modal */}
+            {showSettings && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
+                    <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center border-b pb-4">
+                            <h2 className="text-xl font-bold text-gray-800">Settings</h2>
+                            <button onClick={() => setShowSettings(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
+                                <X size={20} className="text-gray-600" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <button onClick={loginToGoogle} className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors text-orange-600 border border-orange-100">
+                                <div className="bg-white p-2 rounded-full shadow-sm">
+                                    <Cloud size={24} />
+                                </div>
+                                <span className="text-xs font-semibold">Sync to Google Drive</span>
+                            </button>
+                            <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-primary border border-blue-100">
+                                <div className="bg-white p-2 rounded-full shadow-sm">
+                                    <Image size={24} />
+                                </div>
+                                <span className="text-xs font-semibold">Logo</span>
+                            </button>
+                            <input type="file" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
+
+                            <button onClick={exportBackup} className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors text-purple-600 border border-purple-100">
+                                <div className="bg-white p-2 rounded-full shadow-sm">
+                                    <Download size={24} />
+                                </div>
+                                <span className="text-xs font-semibold">Backup</span>
+                            </button>
+
+                            <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors text-green-600 border border-green-100">
+                                <div className="bg-white p-2 rounded-full shadow-sm">
+                                    <Upload size={24} />
+                                </div>
+                                <span className="text-xs font-semibold">Restore</span>
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+                        </div>
+
+                        <div className="text-center pt-2">
+                            <p className="text-[10px] text-gray-400">Version 1.0.0 • Anjaneya Borewells</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default InvoiceList;
