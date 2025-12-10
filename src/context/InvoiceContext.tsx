@@ -36,12 +36,12 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [invoices, setInvoices] = useState<InvoiceData[]>([]);
-    const [logo, setLogoState] = useState<string | null>('/logo.jpg');
+    const [logo, setLogoState] = useState<string | null>('/tree_logo.png');
 
     // Google Drive State
     const [tokenClient, setTokenClient] = useState<any>(null);
     const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
-    const [googleUser, setGoogleUser] = useState<any>(null); // Kept for interface compatibility
+    const [googleUser] = useState<any>(null); // Kept for interface compatibility
     const [accessToken, setAccessToken] = useState<string | null>(null);
 
     useEffect(() => {
