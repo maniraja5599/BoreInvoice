@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, Share2, FileImage } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, FileImage, Pencil } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
@@ -85,7 +85,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             ) : (
                 <div className="space-y-3">
                     {filteredInvoices.map(inv => (
-                        <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center" onClick={() => onEdit(inv)}>
+                        <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setPreviewInvoice(inv)}>
                             <div>
                                 <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
                                 <p className="text-xs text-gray-500">{inv.customer.date} • #{inv.customer.invoiceNumber}</p>
@@ -93,10 +93,10 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             <div className="flex items-center gap-2">
                                 <span className="font-bold text-primary mr-2">₹{inv.totalAmount.toLocaleString()}</span>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                    onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
                                     className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
                                 >
-                                    <Share2 size={18} />
+                                    <Pencil size={18} />
                                 </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); deleteInvoice(inv.id); }}
