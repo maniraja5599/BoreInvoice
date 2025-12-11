@@ -36,7 +36,7 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [invoices, setInvoices] = useState<InvoiceData[]>([]);
-    const [logo, setLogoState] = useState<string | null>('/tree_logo.png');
+    const [logo, setLogoState] = useState<string | null>('/new_logo.jpg');
 
     // Google Drive State
     const [tokenClient, setTokenClient] = useState<any>(null);
