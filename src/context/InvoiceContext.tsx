@@ -34,9 +34,11 @@ const InvoiceContext = createContext<InvoiceContextType | undefined>(undefined);
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+import defaultLogo from '../assets/logo.jpg';
+
 export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [invoices, setInvoices] = useState<InvoiceData[]>([]);
-    const [logo, setLogoState] = useState<string | null>('/new_logo.jpg');
+    const [logo, setLogoState] = useState<string | null>(defaultLogo);
 
     // Google Drive State
     const [tokenClient, setTokenClient] = useState<any>(null);

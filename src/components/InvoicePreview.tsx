@@ -43,7 +43,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                         </div>
                     )}
                     <div>
-                        <h1 className="text-lg md:text-xl font-normal text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                        <h1 className="text-base md:text-xl font-normal text-[#009900] tracking-wider leading-tight" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
                         <p className="text-gray-600 font-bold text-xs uppercase tracking-wider">ஆழமான நம்பிக்கை!..</p>
