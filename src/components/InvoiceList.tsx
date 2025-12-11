@@ -6,7 +6,7 @@ import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus, lastSyncTime } = useInvoices();
+    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus } = useInvoices();
     const isGoogleLoggedIn = !!user;
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
