@@ -91,7 +91,8 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         const name = prompt("Enter a name for this Rate Profile:", selectedProfileName || "New Profile");
         if (!name) return;
 
-        const newProfile: SlabRateProfile = { name, rates: [...slabRates] };
+        // Deep copy rates to avoid reference issues
+        const newProfile: SlabRateProfile = { name, rates: JSON.parse(JSON.stringify(slabRates)) };
 
         // Check if profile exists
         const existingIndex = savedProfiles.findIndex(p => p.name === name);
@@ -114,7 +115,8 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     const handleLoadProfile = (name: string) => {
         const profile = savedProfiles.find(p => p.name === name);
         if (profile) {
-            setSlabRates(profile.rates);
+            // Deep copy to ensure we don't mutate the saved profile directly when editing
+            setSlabRates(JSON.parse(JSON.stringify(profile.rates)));
             setSelectedProfileName(profile.name);
         }
     };
