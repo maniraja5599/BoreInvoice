@@ -10,6 +10,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const logoInputRef = React.useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [showSettings, setShowSettings] = useState(false);
     const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
     const previewRef = React.useRef<HTMLDivElement>(null);
 
