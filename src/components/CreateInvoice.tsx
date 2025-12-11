@@ -325,7 +325,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500">7" Rate</label>
+                            <label className="text-xs text-gray-500">7" Rate / ft</label>
                             <input
                                 type="number" className="w-full p-2 border rounded-lg"
                                 value={borewell.casingRate7 || ''} onChange={e => setBorewell({ ...borewell, casingRate7: Number(e.target.value) })}
@@ -341,7 +341,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                             />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500">10" Rate</label>
+                            <label className="text-xs text-gray-500">10" Rate / ft</label>
                             <input
                                 type="number" className="w-full p-2 border rounded-lg"
                                 value={borewell.casingRate10 || ''} onChange={e => setBorewell({ ...borewell, casingRate10: Number(e.target.value) })}

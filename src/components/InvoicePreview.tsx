@@ -109,7 +109,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1">{sNo++}</td>
                                 <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none">7" Casing Pipe</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingDepth7} ft</td>
-                                <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate7}</td>
+                                <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate7} / ft</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing7Cost.toLocaleString()}</td>
                             </tr>
                         )}
@@ -120,7 +120,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1">{sNo++}</td>
                                 <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none">10" Casing Pipe</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingDepth10} ft</td>
-                                <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate10}</td>
+                                <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate10} / ft</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing10Cost.toLocaleString()}</td>
                             </tr>
                         )}
