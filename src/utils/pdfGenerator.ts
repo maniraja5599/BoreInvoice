@@ -11,12 +11,31 @@ export const generateAndSharePdf = async (elementId: string, fileName: string) =
 
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfPageHeight = pdf.internal.pageSize.getHeight();
 
         // Calculate dimensions to maintain aspect ratio
         const imgProps = pdf.getImageProperties(imgData);
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        let finalPdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        // If height exceeds A4 page height, scale it down to fit
+        if (finalPdfHeight > pdfPageHeight) {
+            const scaleFactor = pdfPageHeight / finalPdfHeight;
+            finalPdfHeight = pdfPageHeight;
+            // We also need to adjust width to maintain aspect ratio effectively, 
+            // but addImage takes width/height args. 
+            // If we set strict height, we should adjust width too?
+            // Actually, usually we want to fit width 100%. 
+            // If it's too tall, we must choose: 2 pages OR shrink.
+            // User likely wants single page.
+
+            // Let's recalculate based on fitting height:
+            const scaledWidth = (imgProps.width * pdfPageHeight) / imgProps.height;
+            // Center it horizontally
+            const xOffset = (pdfWidth - scaledWidth) / 2;
+            pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, finalPdfHeight);
+        } else {
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, finalPdfHeight);
+        }
 
         const blob = pdf.output('blob');
         const file = new File([blob], fileName, { type: 'application/pdf' });
