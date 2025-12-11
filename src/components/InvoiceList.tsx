@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, FileImage, Pencil } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, FileImage, Pencil, Smartphone, ArrowLeft } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
@@ -13,6 +13,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     const [showSettings, setShowSettings] = useState(false);
     const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
     const previewRef = React.useRef<HTMLDivElement>(null);
+    const [showInstallGuide, setShowInstallGuide] = useState(false);
 
     const filteredInvoices = invoices.filter(inv =>
         inv.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,9 +42,12 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
         }
     };
 
+
+
     return (
         <div className="bg-slate-50 min-h-screen p-4 pb-20">
-            {/* Header */}
+            {/* ... (Header & Search) ... */}
+
             <div className="flex justify-between items-start mb-6">
                 {/* Branding Section */}
                 <div className='flex items-center gap-3 text-left'>
@@ -122,64 +126,106 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             {/* Settings Modal */}
             {showSettings && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
-                    <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center border-b pb-4">
-                            <h2 className="text-xl font-bold text-gray-800">Settings</h2>
-                            <button onClick={() => setShowSettings(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
-                                <X size={20} className="text-gray-600" />
-                            </button>
+                    {!showInstallGuide ? (
+                        <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center border-b pb-4">
+                                <h2 className="text-xl font-bold text-gray-800">Settings</h2>
+                                <button onClick={() => setShowSettings(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <button onClick={loginToGoogle} className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}>
+                                    <div className="bg-white p-2 rounded-full shadow-sm relative">
+                                        <Cloud size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
+                                        {isGoogleLoggedIn && (
+                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Auto-Sync On' : 'Connect Drive'}</span>
+                                        {isGoogleLoggedIn && syncStatus !== 'idle' && (
+                                            <span className={`text-[10px] uppercase font-bold mt-1 ${syncStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                                                {syncStatus === 'syncing' ? 'Syncing...' : syncStatus}
+                                            </span>
+                                        )}
+                                        {lastSyncTime && syncStatus === 'idle' && (
+                                            <span className="text-[9px] text-gray-500 mt-0.5">
+                                                {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+
+                                <button onClick={() => setShowInstallGuide(true)} className="flex flex-col items-center gap-2 p-4 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors text-teal-600 border border-teal-100">
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <Smartphone size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Install App</span>
+                                </button>
+
+                                <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-primary border border-blue-100">
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <Image size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Logo</span>
+                                </button>
+                                <input type="file" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
+
+                                <button onClick={exportBackup} className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors text-purple-600 border border-purple-100">
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <Download size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Backup</span>
+                                </button>
+
+                                <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors text-green-600 border border-green-100">
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <Upload size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Restore</span>
+                                </button>
+                                <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+                            </div>
+
+                            <div className="text-center pt-2">
+                                <p className="text-[10px] text-gray-400">Version 1.0.0 • Anjaneya Borewells</p>
+                            </div>
                         </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center border-b pb-4">
+                                <h2 className="text-lg font-bold text-gray-800">Install App</h2>
+                                <button onClick={() => setShowInstallGuide(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
+                                    <ArrowLeft size={20} className="text-gray-600" />
+                                </button>
+                            </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <button onClick={loginToGoogle} className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}>
-                                <div className="bg-white p-2 rounded-full shadow-sm relative">
-                                    <Cloud size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
-                                    {isGoogleLoggedIn && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                                    )}
+                            <div className="space-y-4 text-sm text-gray-600">
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                    <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">📱 For Android (Chrome)</h3>
+                                    <ol className="list-decimal ml-4 space-y-1 text-xs">
+                                        <li>Tap the <strong>three dots (⋮)</strong> in the top right.</li>
+                                        <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install App"</strong>.</li>
+                                        <li>Confirm by tapping <strong>Add/Install</strong>.</li>
+                                    </ol>
                                 </div>
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Auto-Sync On' : 'Connect Drive'}</span>
-                                    {isGoogleLoggedIn && syncStatus !== 'idle' && (
-                                        <span className={`text-[10px] uppercase font-bold mt-1 ${syncStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
-                                            {syncStatus === 'syncing' ? 'Syncing...' : syncStatus}
-                                        </span>
-                                    )}
-                                    {lastSyncTime && syncStatus === 'idle' && (
-                                        <span className="text-[9px] text-gray-500 mt-0.5">
-                                            {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                            <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-primary border border-blue-100">
-                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                    <Image size={24} />
-                                </div>
-                                <span className="text-xs font-semibold">Logo</span>
-                            </button>
-                            <input type="file" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
 
-                            <button onClick={exportBackup} className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors text-purple-600 border border-purple-100">
-                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                    <Download size={24} />
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                    <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">🍎 For iOS (Safari)</h3>
+                                    <ol className="list-decimal ml-4 space-y-1 text-xs">
+                                        <li>Tap the <strong>Share</strong> button (box with arrow) at the bottom.</li>
+                                        <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+                                        <li>Tap <strong>Add</strong> in the top right corner.</li>
+                                    </ol>
                                 </div>
-                                <span className="text-xs font-semibold">Backup</span>
-                            </button>
-
-                            <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors text-green-600 border border-green-100">
-                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                    <Upload size={24} />
-                                </div>
-                                <span className="text-xs font-semibold">Restore</span>
-                            </button>
-                            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+                            </div>
+                            <div className="text-center pt-2">
+                                <p className="text-[10px] text-primary bg-blue-50 p-2 rounded">Note: This makes the app work offline and look like a native app!</p>
+                            </div>
                         </div>
-
-                        <div className="text-center pt-2">
-                            <p className="text-[10px] text-gray-400">Version 1.0.0 • Anjaneya Borewells</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
 

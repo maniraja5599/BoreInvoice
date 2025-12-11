@@ -194,8 +194,8 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Combined Login Handler
     const loginToGoogle = () => {
-        if (!CLIENT_ID) {
-            alert("Please add VITE_GOOGLE_CLIENT_ID to .env file");
+        if (!CLIENT_ID || CLIENT_ID.includes('YOUR_CLIENT_ID_HERE')) {
+            alert("Configuration Required:\n1. Create a Project in Google Cloud Console\n2. Create an OAuth Client ID\n3. Paste the ID into your .env file as VITE_GOOGLE_CLIENT_ID");
             return;
         }
         if (!tokenClient) {
