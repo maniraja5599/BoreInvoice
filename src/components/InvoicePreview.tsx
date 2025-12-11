@@ -112,7 +112,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate7}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing7Cost.toLocaleString()}</td>
                             </tr>
-                        ))}
+                        )}
 
                         {/* 10" Casing */}
                         {(data.borewell.casingDepth10 || 0) > 0 && (
@@ -123,7 +123,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate10}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing10Cost.toLocaleString()}</td>
                             </tr>
-                        ))}
+                        )}
 
                         {/* Other Charges */}
                         {data.borewell.bata > 0 && (
@@ -134,7 +134,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.bata.toLocaleString()}</td>
                             </tr>
-                        ))}
+                        )}
                         {data.borewell.transportCharges > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
@@ -143,7 +143,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.transportCharges.toLocaleString()}</td>
                             </tr>
-                        ))}
+                        )}
                         {data.borewell.extraTime > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
@@ -152,7 +152,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.extraTime.toLocaleString()}</td>
                             </tr>
-                        ))}
+                        )}
 
                         {/* Extra Items */}
                         {data.items.map((item) => (
