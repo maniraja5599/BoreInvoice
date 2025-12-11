@@ -186,11 +186,18 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
             {/* Header */}
-            <div className="bg-white p-4 shadow-sm flex items-center gap-4 sticky top-0 z-10">
-                <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full">
-                    <ArrowLeft className="w-6 h-6 text-gray-600" />
-                </button>
-                <h1 className="text-xl font-bold text-gray-800">{initialData ? 'Edit Invoice' : 'New Invoice'}</h1>
+            <div className="bg-white p-4 shadow-sm flex items-center justify-between sticky top-0 z-10 box-border">
+                <div className="flex items-center gap-3">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full">
+                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <h1 className="text-lg font-bold text-gray-800">{initialData ? 'Edit Invoice' : 'New Invoice'}</h1>
+                </div>
+                {/* Fixed Total Fixed Right */}
+                <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 text-right">
+                    <p className="text-[10px] text-gray-500 font-medium">Estimated Total</p>
+                    <p className="text-lg font-bold text-primary leading-none">₹{grandTotal.toLocaleString()}</p>
+                </div>
             </div>
 
             <div className="p-4 max-w-2xl mx-auto space-y-6">
@@ -242,16 +249,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                            type="text" placeholder="Customer Name" className="w-full p-2 border rounded-lg"
-                            value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
-                        <input
-                            type="tel" placeholder="Phone Number" className="w-full p-2 border rounded-lg"
-                            value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
+                        {/* Moved Date and Invoice Number to TOP */}
                         <input
                             type="date" className="w-full p-2 border rounded-lg"
                             value={customer.date} onChange={e => setCustomer({ ...customer, date: e.target.value })}
@@ -260,6 +258,17 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         <input
                             type="text" placeholder={`${docType} Number`} className="w-full p-2 border rounded-lg"
                             value={customer.invoiceNumber} onChange={e => setCustomer({ ...customer, invoiceNumber: e.target.value })}
+                            onFocus={(e) => e.target.select()}
+                        />
+                        {/* Name and Phone below */}
+                        <input
+                            type="text" placeholder="Customer Name" className="w-full p-2 border rounded-lg"
+                            value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}
+                            onFocus={(e) => e.target.select()}
+                        />
+                        <input
+                            type="tel" placeholder="Phone Number" className="w-full p-2 border rounded-lg"
+                            value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })}
                             onFocus={(e) => e.target.select()}
                         />
                         <textarea
@@ -447,20 +456,15 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                     </div>
                 </section>
 
-                {/* Total Footer */}
-                <section className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center sticky bottom-0 border-t-2 border-primary">
-                    <div>
-                        <p className="text-sm text-gray-500">Estimated Total</p>
-                        <p className="text-2xl font-bold text-gray-800">₹{grandTotal.toLocaleString()}</p>
-                    </div>
-                    <div className="flex gap-2">
+                {/* Footer Buttons Only */}
+                <section className="bg-white p-4 rounded-xl shadow-sm flex flex-col items-center sticky bottom-0 border-t-2 border-primary">
+                    <div className="flex gap-4 w-full justify-center">
                         <button onClick={handleSave} className="bg-gray-200 p-3 rounded-full hover:bg-gray-300"><Save className="text-gray-700" /></button>
-                        <button onClick={() => setShowPreview(true)} className="bg-primary text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:bg-sky-700">
+                        <button onClick={() => setShowPreview(true)} className="bg-primary text-white px-10 py-3 rounded-full font-semibold shadow-lg hover:bg-sky-700">
                             Preview
                         </button>
                     </div>
                 </section>
-
             </div >
 
             {/* Preview Modal */}
