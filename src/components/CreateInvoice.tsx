@@ -3,8 +3,7 @@ import type { CustomerDetails, BorewellDetails, InvoiceItem, InvoiceData, SlabRa
 import { TELESCOPIC_RATES } from '../types';
 import { useInvoices } from '../context/InvoiceContext';
 import InvoicePreview from './InvoicePreview';
-import { generateAndShareImage } from '../utils/pdfGenerator';
-import { Plus, Trash2, Save, FileImage, X, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, X, ArrowLeft } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
@@ -455,7 +454,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                     <div className="flex gap-2">
                         <button onClick={handleSave} className="bg-gray-200 p-3 rounded-full hover:bg-gray-300"><Save className="text-gray-700" /></button>
                         <button onClick={() => setShowPreview(true)} className="bg-primary text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:bg-sky-700">
-                            Preview & Share
+                            Preview
                         </button>
                     </div>
                 </section>
@@ -476,11 +475,11 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
 
                         <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl">
                             <button
-                                onClick={() => generateAndShareImage('invoice-preview', `${docType}-${customer.name}.png`)}
-                                className="flex flex-col items-center gap-1 text-green-600"
+                                onClick={() => { handleSave(); setShowPreview(false); }}
+                                className="flex flex-col items-center gap-1 text-primary"
                             >
-                                <div className="bg-green-100 p-3 rounded-full"><FileImage /></div>
-                                <span className="text-xs font-semibold">Share Image</span>
+                                <div className="bg-blue-50 p-3 rounded-full"><Save /></div>
+                                <span className="text-xs font-semibold">Save Invoice</span>
                             </button>
                         </div>
                     </div>
