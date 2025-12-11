@@ -17,6 +17,7 @@
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "date-fns": "^4.1.0",
+    "firebase": "^12.6.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.556.0",

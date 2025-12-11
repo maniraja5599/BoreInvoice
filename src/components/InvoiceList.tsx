@@ -6,7 +6,9 @@ import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo, isGoogleLoggedIn, syncStatus, lastSyncTime } = useInvoices();
+    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus, lastSyncTime } = useInvoices();
+    const isGoogleLoggedIn = !!user;
+
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const logoInputRef = React.useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -22,7 +24,6 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
         inv.customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         inv.id.includes(searchTerm)
     );
-
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
@@ -42,14 +43,10 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
         }
     };
 
-
-
     return (
         <div className="bg-slate-50 min-h-screen p-4 pb-20">
-            {/* ... (Header & Search) ... */}
-
+            {/* Header */}
             <div className="flex justify-between items-start mb-6">
-                {/* Branding Section */}
                 <div className='flex items-center gap-3 text-left'>
                     {logo ? <img src={logo} className="w-14 h-14 rounded-xl object-contain bg-white shadow-md shadow-gray-200" /> : null}
                     <div>
@@ -60,7 +57,6 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     </div>
                 </div>
 
-                {/* Settings Trigger */}
                 <button
                     onClick={() => setShowSettings(true)}
                     className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
@@ -80,6 +76,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                 />
             </div>
 
+            {/* List */}
             {filteredInvoices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                     <FileText size={48} className="mb-2 opacity-50" />
@@ -114,6 +111,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                 </div>
             )}
 
+            {/* PROMOTED: Create Button */}
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-10 pointer-events-none px-4">
                 <button
                     onClick={onCreate}
@@ -136,7 +134,17 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <button onClick={loginToGoogle} className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}>
+                                {/* FIREBASE AUTH BUTTON */}
+                                <button
+                                    onClick={() => {
+                                        if (isGoogleLoggedIn) {
+                                            if (confirm("Sign out of sync?")) logout();
+                                        } else {
+                                            loginToGoogle();
+                                        }
+                                    }}
+                                    className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}
+                                >
                                     <div className="bg-white p-2 rounded-full shadow-sm relative">
                                         <Cloud size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
                                         {isGoogleLoggedIn && (
@@ -144,16 +152,13 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                         )}
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Auto-Sync On' : 'Connect Drive'}</span>
-                                        {isGoogleLoggedIn && syncStatus !== 'idle' && (
-                                            <span className={`text-[10px] uppercase font-bold mt-1 ${syncStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
-                                                {syncStatus === 'syncing' ? 'Syncing...' : syncStatus}
+                                        <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Synced' : 'Connect'}</span>
+                                        {isGoogleLoggedIn ? (
+                                            <span className="text-[10px] text-green-600 font-bold mt-1">
+                                                {syncStatus === 'syncing' ? 'Syncing...' : 'Tap to Logout'}
                                             </span>
-                                        )}
-                                        {lastSyncTime && syncStatus === 'idle' && (
-                                            <span className="text-[9px] text-gray-500 mt-0.5">
-                                                {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-orange-500 mt-1">Tap to Login</span>
                                         )}
                                     </div>
                                 </button>
@@ -190,7 +195,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             </div>
 
                             <div className="text-center pt-2">
-                                <p className="text-[10px] text-gray-400">Version 1.0.0 • Anjaneya Borewells</p>
+                                <p className="text-[10px] text-gray-400">Version 1.0.1 • Anjaneya Borewells</p>
                             </div>
                         </div>
                     ) : (
