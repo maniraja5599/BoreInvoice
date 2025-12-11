@@ -43,7 +43,7 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                         </div>
                     )}
                     <div>
-                        <h1 className="text-base md:text-xl font-normal text-[#009900] tracking-wider leading-tight" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                        <h1 className="text-sm md:text-xl font-normal text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
                         <p className="text-gray-600 font-bold text-xs uppercase tracking-wider">ஆழமான நம்பிக்கை!..</p>
@@ -55,8 +55,8 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                     </div>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                    <div className="bg-gray-800 text-white px-3 py-1 rounded-md mb-2 shadow-sm">
-                        <h2 className="text-sm font-bold uppercase tracking-widest">{data.type || 'INVOICE'}</h2>
+                    <div className="bg-gray-800 text-white px-2 py-0.5 rounded-md mb-2 shadow-sm">
+                        <h2 className="text-[10px] md:text-sm font-bold uppercase tracking-widest">{data.type || 'INVOICE'}</h2>
                     </div>
                     {data.boreType && (
                         <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mb-2">
