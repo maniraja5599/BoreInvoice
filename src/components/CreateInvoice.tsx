@@ -484,6 +484,9 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                 {/* Footer Buttons Only */}
                 <section className="bg-white p-4 rounded-xl shadow-sm flex flex-col items-center sticky bottom-0 border-t-2 border-primary">
                     <div className="flex gap-4 w-full justify-center">
+                        <button onClick={onBack} className="bg-gray-200 text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-300 flex items-center gap-2">
+                            <ArrowLeft size={20} />
+                        </button>
                         <button onClick={handleSave} className="bg-gray-200 text-gray-700 px-8 py-3 rounded-full font-semibold hover:bg-gray-300 flex items-center gap-2">
                             <Save size={20} />
                             Save
