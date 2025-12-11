@@ -3,7 +3,7 @@ import type { CustomerDetails, BorewellDetails, InvoiceItem, InvoiceData, SlabRa
 import { TELESCOPIC_RATES } from '../types';
 import { useInvoices } from '../context/InvoiceContext';
 import InvoicePreview from './InvoicePreview';
-import { Plus, Trash2, Save, X, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, X, ArrowLeft, Eye } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
@@ -20,27 +20,42 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
     });
 
-    const [borewell, setBorewell] = useState<BorewellDetails>({
-        depth: 0,
-        casingDepth7: 0,
-        casingRate7: 400,
-        casingDepth10: 0,
-        casingRate10: 700,
-        transportCharges: 0,
-        bata: 2000,
-        oldBoreDepth: 0,
-        flushingRate: 0,
-        extraTime: initialData?.borewell?.extraTime || 0,
-        discountAmount: initialData?.borewell?.discountAmount || 0,
-        ...(initialData?.borewell || {}) // Merge existing data
-    });
+    const [borewell, setBorewell] = useState<BorewellDetails>(() => {
+        // Load saved defaults if available
+        const savedDefaults = localStorage.getItem('invoice_default_rates');
+        const parsedDefaults = savedDefaults ? JSON.parse(savedDefaults) : {};
 
-    // Handle migration from old 'casingDepth' if editing old invoice
-    // @ts-ignore
-    if (initialData?.borewell?.casingDepth && !borewell.casingDepth7) {
-        // logic to migrate if needed, but the spread above might miss it if keys differ. 
-        // Actually, let's just use the state directly. simpler.
-    }
+        const defaults: BorewellDetails = {
+            depth: 0,
+            casingDepth7: 0,
+            casingRate7: parsedDefaults.casingRate7 || 400,
+            casingDepth10: 0,
+            casingRate10: parsedDefaults.casingRate10 || 700,
+            transportCharges: parsedDefaults.transportCharges || 0,
+            bata: parsedDefaults.bata || 2000,
+            oldBoreDepth: 0,
+            flushingRate: parsedDefaults.flushingRate || 0,
+            extraTime: initialData?.borewell?.extraTime || 0,
+            discountAmount: initialData?.borewell?.discountAmount || 0,
+        };
+
+        const incoming = initialData?.borewell || {};
+        const legacy = incoming as any;
+        const migrated: any = { ...incoming };
+
+        // Migration for old single casing fields
+        if (legacy.casingDepth && !migrated.casingDepth7) {
+            migrated.casingDepth7 = legacy.casingDepth;
+        }
+        if (legacy.casingRate && !migrated.casingRate7) {
+            migrated.casingRate7 = legacy.casingRate;
+        }
+
+        return {
+            ...defaults,
+            ...migrated
+        };
+    });
 
     // Ensure numeric values
     const safeCasing7 = Number(borewell.casingDepth7) || 0;
@@ -158,6 +173,16 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     const grandTotal = drillingCost + casing7Cost + casing10Cost + safeTransport + safeBata + safeExtraTime + itemsTotal - safeDiscount;
 
     const handleSave = () => {
+        // Save Default Rates for future use
+        const ratesToSave = {
+            casingRate7: borewell.casingRate7,
+            casingRate10: borewell.casingRate10,
+            bata: borewell.bata,
+            transportCharges: borewell.transportCharges,
+            flushingRate: borewell.flushingRate,
+        };
+        localStorage.setItem('invoice_default_rates', JSON.stringify(ratesToSave));
+
         const invoice: InvoiceData = {
             id: initialData?.id || Date.now().toString(),
             customer,
@@ -459,8 +484,12 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                 {/* Footer Buttons Only */}
                 <section className="bg-white p-4 rounded-xl shadow-sm flex flex-col items-center sticky bottom-0 border-t-2 border-primary">
                     <div className="flex gap-4 w-full justify-center">
-                        <button onClick={handleSave} className="bg-gray-200 p-3 rounded-full hover:bg-gray-300"><Save className="text-gray-700" /></button>
-                        <button onClick={() => setShowPreview(true)} className="bg-primary text-white px-10 py-3 rounded-full font-semibold shadow-lg hover:bg-sky-700">
+                        <button onClick={handleSave} className="bg-gray-200 text-gray-700 px-8 py-3 rounded-full font-semibold hover:bg-gray-300 flex items-center gap-2">
+                            <Save size={20} />
+                            Save
+                        </button>
+                        <button onClick={() => setShowPreview(true)} className="bg-primary text-white px-10 py-3 rounded-full font-semibold shadow-lg hover:bg-sky-700 flex items-center gap-2">
+                            <Eye size={20} />
                             Preview
                         </button>
                     </div>
