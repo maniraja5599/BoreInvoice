@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 export const generateAndSharePdf = async (elementId: string, fileName: string) => {
@@ -6,17 +6,15 @@ export const generateAndSharePdf = async (elementId: string, fileName: string) =
     if (!element) return;
 
     try {
-        const canvas = await html2canvas(element, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-        });
-
-        const imgData = canvas.toDataURL('image/png');
+        // html-to-image handles modern CSS (like oklch) much better than html2canvas
+        const imgData = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
 
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        // Calculate dimensions to maintain aspect ratio
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
@@ -52,37 +50,31 @@ export const generateAndShareImage = async (elementId: string, fileName: string)
     if (!element) return;
 
     try {
-        const canvas = await html2canvas(element, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-        });
+        const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
 
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            const file = new File([blob], fileName.replace('.pdf', '.png'), { type: 'image/png' });
+        // Convert to blob for sharing
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], fileName.replace('.pdf', '.png'), { type: 'image/png' });
 
-            const shareData = {
-                files: [file],
-                title: 'Borewell Invoice',
-                text: 'Please find the attached invoice details.',
-            };
+        const shareData = {
+            files: [file],
+            title: 'Borewell Invoice',
+            text: 'Please find the attached invoice details.',
+        };
 
-            // Enhanced sharing logic
-            if (navigator.canShare && navigator.canShare(shareData)) {
-                try {
-                    await navigator.share(shareData);
-                } catch (shareError: any) {
-                    if (shareError.name !== 'AbortError') {
-                        console.warn("Sharing failed, falling back to download:", shareError);
-                        downloadLink(canvas.toDataURL('image/png'), fileName.replace('.pdf', '.png'));
-                    }
+        if (navigator.canShare && navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+            } catch (shareError: any) {
+                if (shareError.name !== 'AbortError') {
+                    console.warn("Sharing failed, falling back to download:", shareError);
+                    downloadLink(dataUrl, fileName.replace('.pdf', '.png'));
                 }
-            } else {
-                // Fallback for desktop or non-supported browsers
-                downloadLink(canvas.toDataURL('image/png'), fileName.replace('.pdf', '.png'));
             }
-        }, 'image/png');
+        } else {
+            downloadLink(dataUrl, fileName.replace('.pdf', '.png'));
+        }
 
     } catch (error) {
         console.error("Error generating Image:", error);
