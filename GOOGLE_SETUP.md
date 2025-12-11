@@ -52,7 +52,8 @@ To make it work on your live website (e.g., `https://maniraja5599.github.io/Bore
 2. Go to **APIs & Services > Credentials**.
 3. Click on your OAuth Client ID (e.g., "Local Dev" or "Web Client").
 4. Under **Authorized JavaScript origins**, click **ADD URI**.
-5. Add your GitHub Pages URL: `https://maniraja5599.github.io` (Do not include `/BoreInvoice` or trailing slashes).
+5. Add your GitHub Pages URL: `https://maniraja5599.github.io`
+   > **Important**: Do NOT include `/BoreInvoice` or a trailing `/`. Google only accepts the domain.
 6. Click **Save**.
 
 ### 2. Add Secret to GitHub

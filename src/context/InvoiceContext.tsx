@@ -192,6 +192,52 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, [invoices, isGoogleLoggedIn, accessToken]);
 
+    // ... (previous code)
+
+    const syncFromCloud = async (token: string) => {
+        setSyncStatus('syncing');
+        try {
+            const fileName = 'borewell_invoices_sync.json';
+            const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and trashed=false&fields=files(id)`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const searchResult = await searchResponse.json();
+
+            if (searchResult.files && searchResult.files.length > 0) {
+                const fileId = searchResult.files[0].id;
+                localStorage.setItem('borewell_sync_file_id', fileId);
+
+                // Download Content
+                const fileResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (fileResponse.ok) {
+                    const data = await fileResponse.json();
+                    if (Array.isArray(data)) {
+                        // MERGE STRATEGY: Combine arrays and remove duplicates by ID
+                        setInvoices(prev => {
+                            const combined = [...data, ...prev];
+                            const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                            localStorage.setItem('borewell_invoices', JSON.stringify(unique));
+                            return unique;
+                        });
+                        setLastSyncTime(new Date());
+                        setSyncStatus('success');
+                        setTimeout(() => setSyncStatus('idle'), 3000);
+                        return;
+                    }
+                }
+            }
+            setSyncStatus('success'); // No file found is also a "success" (just nothing to sync)
+            setTimeout(() => setSyncStatus('idle'), 3000);
+
+        } catch (e) {
+            console.error("Download Error", e);
+            setSyncStatus('error');
+        }
+    };
+
     // Combined Login Handler
     const loginToGoogle = () => {
         if (!CLIENT_ID || CLIENT_ID.includes('YOUR_CLIENT_ID_HERE')) {
@@ -210,11 +256,9 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             setAccessToken(resp.access_token);
             setIsGoogleLoggedIn(true);
-            // Trigger immediate sync on login
-            if (invoices.length > 0) {
-                // We can't call performSync immediately because state update is async, 
-                // but the useEffect will catch the change in isGoogleLoggedIn and trigger sync!
-            }
+
+            // Trigger Pull First!
+            syncFromCloud(resp.access_token);
         };
 
         tokenClient.requestAccessToken({ prompt: 'consent' });
