@@ -402,16 +402,16 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         />
                         <div className="flex gap-2">
                             <input
-                                type="number" placeholder="Qty" className="flex-1 md:w-20 p-2 border rounded-lg"
+                                type="number" placeholder="Qty" className="w-16 md:w-20 p-2 border rounded-lg shrink-0"
                                 value={newItem.quantity || ''} onChange={e => setNewItem({ ...newItem, quantity: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                             <input
-                                type="number" placeholder="Rate" className="flex-1 md:w-32 p-2 border rounded-lg"
+                                type="number" placeholder="Rate" className="flex-1 min-w-0 md:w-32 p-2 border rounded-lg"
                                 value={newItem.rate || ''} onChange={e => setNewItem({ ...newItem, rate: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
-                            <button onClick={handleAddItem} className="bg-secondary text-white p-2 rounded-lg w-12 flex justify-center items-center"><Plus /></button>
+                            <button onClick={handleAddItem} className="bg-secondary text-white p-2 rounded-lg w-12 shrink-0 flex justify-center items-center"><Plus /></button>
                         </div>
                     </div>
 
