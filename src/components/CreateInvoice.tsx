@@ -496,21 +496,35 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         </div>
 
                         {/* Profile Manager Bar */}
-                        <div className="px-4 pt-4 flex gap-2 items-center">
-                            <select
-                                className="border rounded p-2 text-xs flex-1"
-                                value={selectedProfileName}
-                                onChange={(e) => handleLoadProfile(e.target.value)}
-                            >
-                                <option value="">-- Select Profile --</option>
+                        {/* Profile Manager Bar */}
+                        <div className="px-4 pt-4 border-b pb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-gray-500 uppercase">Rate Profiles</span>
+                                <button onClick={handleSaveProfile} className="text-xs text-primary hover:underline font-semibold">+ Save Current as Profile</button>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                {savedProfiles.length === 0 && <span className="text-xs text-gray-400 italic">No saved profiles</span>}
                                 {savedProfiles.map((p, i) => (
-                                    <option key={i} value={p.name}>{p.name}</option>
+                                    <div
+                                        key={i}
+                                        onClick={() => handleLoadProfile(p.name)}
+                                        className={`flex-shrink-0 px-3 py-2 rounded-lg border text-sm font-medium cursor-pointer transition-all flex items-center gap-2 ${selectedProfileName === p.name
+                                            ? 'bg-green-50 border-green-500 text-green-700 shadow-sm ring-1 ring-green-500'
+                                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        <span>{p.name}</span>
+                                        {selectedProfileName === p.name && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteProfile(); }}
+                                                className="hover:bg-green-200 p-1 rounded-full text-green-700"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
+                                    </div>
                                 ))}
-                            </select>
-                            <button onClick={handleSaveProfile} className="bg-secondary text-white px-3 py-2 rounded text-xs whitespace-nowrap">Save Profile</button>
-                            {selectedProfileName && (
-                                <button onClick={handleDeleteProfile} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16} /></button>
-                            )}
+                            </div>
                         </div>
 
                         <div className="p-4 overflow-y-auto flex-1 space-y-4">
