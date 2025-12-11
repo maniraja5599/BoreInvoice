@@ -11,6 +11,8 @@ interface InvoiceContextType {
     invoices: InvoiceData[];
     saveInvoice: (invoice: InvoiceData) => boolean;
     deleteInvoice: (id: string) => void;
+    restoreInvoice: (id: string) => void;
+    permanentDeleteInvoice: (id: string) => void;
     importBackup: (file: File) => Promise<void>;
     exportBackup: () => void;
     shareBackup: () => Promise<void>;
@@ -181,15 +183,34 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const deleteInvoice = (id: string) => {
         setInvoices(prev => {
-            const newInvoices = prev.filter(i => i.id !== id);
-            // 1. Save Local
+            const newInvoices = prev.map(inv =>
+                inv.id === id ? { ...inv, isDeleted: true } : inv
+            );
             localStorage.setItem('borewell_invoices', JSON.stringify(newInvoices));
-            // 2. Sync Cloud
             syncToCloud(newInvoices);
-
             return newInvoices;
         });
     }
+
+    const restoreInvoice = (id: string) => {
+        setInvoices(prev => {
+            const newInvoices = prev.map(inv =>
+                inv.id === id ? { ...inv, isDeleted: false } : inv
+            );
+            localStorage.setItem('borewell_invoices', JSON.stringify(newInvoices));
+            syncToCloud(newInvoices);
+            return newInvoices;
+        });
+    };
+
+    const permanentDeleteInvoice = (id: string) => {
+        setInvoices(prev => {
+            const newInvoices = prev.filter(i => i.id !== id);
+            localStorage.setItem('borewell_invoices', JSON.stringify(newInvoices));
+            syncToCloud(newInvoices);
+            return newInvoices;
+        });
+    };
 
     const exportBackup = () => {
         const dataStr = JSON.stringify(invoices);
@@ -245,6 +266,8 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             invoices,
             saveInvoice,
             deleteInvoice,
+            restoreInvoice,
+            permanentDeleteInvoice,
             exportBackup,
             importBackup,
             shareBackup,

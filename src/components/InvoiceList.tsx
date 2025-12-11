@@ -6,7 +6,7 @@ import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus } = useInvoices();
+    const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus } = useInvoices();
     const isGoogleLoggedIn = !!user;
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -17,13 +17,23 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     const previewRef = React.useRef<HTMLDivElement>(null);
     const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-    const filteredInvoices = invoices.filter(inv =>
-        inv.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.customer.phone.includes(searchTerm) ||
-        inv.customer.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.id.includes(searchTerm)
-    );
+    // View Mode: 'active' or 'deleted'
+    const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active');
+
+    const filteredInvoices = invoices.filter(inv => {
+        // 1. Filter by Deleted Status
+        if (viewMode === 'active' && inv.isDeleted) return false;
+        if (viewMode === 'deleted' && !inv.isDeleted) return false;
+
+        // 2. Filter by Search
+        return (
+            inv.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.customer.phone.includes(searchTerm) ||
+            inv.customer.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.id.includes(searchTerm)
+        );
+    });
 
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
@@ -53,23 +63,33 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         <h1 className="text-xl md:text-2xl font-bold text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
-                        <p className="text-[10px] md:text-xs text-gray-600 font-bold mt-0.5 ml-1">ஆழமான நம்பிக்கை!..</p>
+                        <p className="text-[10px] md:text-xs text-gray-600 font-bold mt-0.5 ml-1">
+                            {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'ஆழமான நம்பிக்கை!..'}
+                        </p>
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setShowSettings(true)}
-                    className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                    <Settings size={24} />
-                </button>
+                <div className="flex gap-2">
+                    {/* View Mode Toggle (Only visible if in Recycle Bin) */}
+                    {viewMode === 'deleted' && (
+                        <button onClick={() => setViewMode('active')} className="p-2 bg-white rounded-full shadow text-primary font-bold text-xs px-3 self-center">
+                            Back
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                        <Settings size={24} />
+                    </button>
+                </div>
             </div>
 
             {/* Search Bar */}
             <div className="mb-4">
                 <input
                     type="text"
-                    placeholder="Search by name, phone, or invoice #..."
+                    placeholder={viewMode === 'deleted' ? "Search deleted invoices..." : "Search by name, phone, or invoice #..."}
                     className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -79,47 +99,78 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             {/* List */}
             {filteredInvoices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                    <FileText size={48} className="mb-2 opacity-50" />
-                    <p>No invoices found</p>
-                    <button onClick={onCreate} className="mt-4 text-primary font-semibold">Create New</button>
+                    {viewMode === 'deleted' ? <Trash2 size={48} className="mb-2 opacity-50" /> : <FileText size={48} className="mb-2 opacity-50" />}
+                    <p>{viewMode === 'deleted' ? 'Recycle Bin Empty' : 'No invoices found'}</p>
+                    {viewMode === 'active' && <button onClick={onCreate} className="mt-4 text-primary font-semibold">Create New</button>}
                 </div>
             ) : (
                 <div className="space-y-3">
                     {filteredInvoices.map(inv => (
-                        <div key={inv.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setPreviewInvoice(inv)}>
+                        <div key={inv.id} className={`p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer transition-colors ${viewMode === 'deleted' ? 'bg-red-50 border border-red-100' : 'bg-white hover:bg-gray-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
                             <div>
                                 <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
                                 <p className="text-xs text-gray-500">{inv.customer.date} • #{inv.customer.invoiceNumber}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-primary mr-2">₹{inv.totalAmount.toLocaleString()}</span>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
-                                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
-                                >
-                                    <Pencil size={18} />
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); deleteInvoice(inv.id); }}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                <span className={`font-bold mr-2 ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
+
+                                {viewMode === 'active' ? (
+                                    <>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
+                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
+                                            }}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
+                                            }}
+                                            className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold"
+                                        >
+                                            Restore
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm("PERMANENTLY DELETE? This cannot be undone.")) permanentDeleteInvoice(inv.id);
+                                            }}
+                                            className="p-2 text-red-600 hover:bg-red-100 rounded-full"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* PROMOTED: Create Button */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-10 pointer-events-none px-4">
-                <button
-                    onClick={onCreate}
-                    className="absolute bottom-0 right-4 bg-primary text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-sky-700 pointer-events-auto"
-                >
-                    +
-                </button>
-            </div>
+            {/* PROMOTED: Create Button (Only in Active Mode) */}
+            {viewMode === 'active' && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-10 pointer-events-none px-4">
+                    <button
+                        onClick={onCreate}
+                        className="absolute bottom-0 right-4 bg-primary text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-sky-700 pointer-events-auto"
+                    >
+                        +
+                    </button>
+                </div>
+            )}
 
             {/* Settings Modal */}
             {showSettings && (
@@ -192,10 +243,22 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                     <span className="text-xs font-semibold">Restore</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+
+                                {/* RECYCLE BIN BUTTON */}
+                                <button
+                                    onClick={() => { setViewMode('deleted'); setShowSettings(false); }}
+                                    className="flex flex-col items-center gap-2 p-4 bg-red-50 hover:bg-red-100 rounded-xl transition-colors text-red-600 border border-red-100"
+                                >
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <Trash2 size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Recycle Bin</span>
+                                </button>
+
                             </div>
 
                             <div className="text-center pt-2">
-                                <p className="text-[10px] text-gray-400">Version 1.0.1 • Anjaneya Borewells</p>
+                                <p className="text-[10px] text-gray-400">Version 1.0.2 • Recycle Bin Added</p>
                             </div>
                         </div>
                     ) : (

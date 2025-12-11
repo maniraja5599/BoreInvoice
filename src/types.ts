@@ -49,6 +49,7 @@ export interface InvoiceData {
     createdAt: number;
     type?: 'Invoice' | 'Quotation';
     boreType?: 'New Bore' | 'Repair Bore';
+    isDeleted?: boolean;
 }
 
 export const TELESCOPIC_RATES: SlabRate[] = [
