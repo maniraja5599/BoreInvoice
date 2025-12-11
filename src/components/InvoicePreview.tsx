@@ -166,10 +166,10 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                         ))}
                     </tbody>
                     <tfoot>
-                        {data.borewell.discountAmount && data.borewell.discountAmount > 0 && (
+                        {(data.borewell.discountAmount || 0) > 0 && (
                             <tr className="bg-red-50 text-red-600">
                                 <td className="p-2 text-right font-medium" colSpan={4}>Less: Discount</td>
-                                <td className="p-2 text-right whitespace-nowrap">- ₹{data.borewell.discountAmount.toLocaleString()}</td>
+                                <td className="p-2 text-right whitespace-nowrap">- ₹{data.borewell.discountAmount?.toLocaleString()}</td>
                             </tr>
                         )}
                         <tr className="bg-gray-100 font-bold text-base">
