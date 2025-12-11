@@ -68,7 +68,16 @@ export const generateAndShareImage = async (elementId: string, fileName: string)
     if (!element) return;
 
     try {
-        const dataUrl = await toPng(element, { backgroundColor: '#ffffff', pixelRatio: 2 });
+        const dataUrl = await toPng(element, {
+            backgroundColor: '#ffffff',
+            pixelRatio: 2,
+            style: {
+                width: '800px',
+                maxWidth: 'none',
+                height: 'auto',
+                overflow: 'visible' // Ensure no clipping
+            }
+        });
 
         // Convert to blob for sharing
         const res = await fetch(dataUrl);
