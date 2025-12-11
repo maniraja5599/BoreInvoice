@@ -254,11 +254,20 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 console.error(resp);
                 return;
             }
-            setAccessToken(resp.access_token);
+            const token = resp.access_token;
+            // Calculate Expiry (default 3599 seconds)
+            const expiresIn = resp.expires_in || 3599;
+            const expiryTime = new Date().getTime() + (expiresIn * 1000);
+
+            setAccessToken(token);
             setIsGoogleLoggedIn(true);
 
+            // Persist Session
+            localStorage.setItem('google_access_token', token);
+            localStorage.setItem('google_token_expiry', expiryTime.toString());
+
             // Trigger Pull First!
-            syncFromCloud(resp.access_token);
+            syncFromCloud(token);
         };
 
         tokenClient.requestAccessToken({ prompt: 'consent' });
