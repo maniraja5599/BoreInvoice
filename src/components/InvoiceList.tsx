@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
+import UserGuide from './UserGuide';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
     const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus } = useInvoices();
@@ -16,6 +17,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
     const previewRef = React.useRef<HTMLDivElement>(null);
     const [showInstallGuide, setShowInstallGuide] = useState(false);
+    const [showUserGuide, setShowUserGuide] = useState(false);
 
     // View Mode: 'active' or 'deleted'
     const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active');
@@ -175,7 +177,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             {/* Settings Modal */}
             {showSettings && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
-                    {!showInstallGuide ? (
+                    {!showInstallGuide && !showUserGuide ? (
                         <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center border-b pb-4">
                                 <h2 className="text-xl font-bold text-gray-800">Settings</h2>
@@ -212,6 +214,14 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                             <span className="text-[10px] text-orange-500 mt-1">Tap to Login</span>
                                         )}
                                     </div>
+                                </button>
+
+                                {/* HELP GUIDE BUTTON */}
+                                <button onClick={() => setShowUserGuide(true)} className="flex flex-col items-center gap-2 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors text-indigo-600 border border-indigo-100">
+                                    <div className="bg-white p-2 rounded-full shadow-sm">
+                                        <HelpCircle size={24} />
+                                    </div>
+                                    <span className="text-xs font-semibold">Help Guide</span>
                                 </button>
 
                                 <button onClick={() => setShowInstallGuide(true)} className="flex flex-col items-center gap-2 p-4 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors text-teal-600 border border-teal-100">
@@ -258,9 +268,11 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             </div>
 
                             <div className="text-center pt-2">
-                                <p className="text-[10px] text-gray-400">Version 1.0.2 • Recycle Bin Added</p>
+                                <p className="text-[10px] text-gray-400">Version 1.0.3 • Anjaneya Borewells</p>
                             </div>
                         </div>
+                    ) : showUserGuide ? (
+                        <UserGuide onClose={() => setShowUserGuide(false)} />
                     ) : (
                         <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center border-b pb-4">
