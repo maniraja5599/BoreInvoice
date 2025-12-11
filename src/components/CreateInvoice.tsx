@@ -3,7 +3,7 @@ import type { CustomerDetails, BorewellDetails, InvoiceItem, InvoiceData, SlabRa
 import { TELESCOPIC_RATES } from '../types';
 import { useInvoices } from '../context/InvoiceContext';
 import InvoicePreview from './InvoicePreview';
-import { generateAndSharePdf, generateAndShareImage } from '../utils/pdfGenerator';
+import { generateAndShareImage } from '../utils/pdfGenerator';
 import { Plus, Trash2, Save, Share2, FileImage, X, ArrowLeft } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
@@ -475,14 +475,6 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         </div>
 
                         <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl">
-                            <button
-                                onClick={() => generateAndSharePdf('invoice-preview', `${docType}-${customer.name}.pdf`)}
-                                className="flex flex-col items-center gap-1 text-primary"
-                            >
-                                <div className="bg-blue-100 p-3 rounded-full"><Share2 /></div>
-                                <span className="text-xs font-semibold">Share PDF</span>
-                            </button>
-
                             <button
                                 onClick={() => generateAndShareImage('invoice-preview', `${docType}-${customer.name}.png`)}
                                 className="flex flex-col items-center gap-1 text-green-600"

@@ -181,14 +181,6 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
 
                     <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl">
                         <button
-                            onClick={() => generateAndSharePdf('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.pdf`)}
-                            className="flex flex-col items-center gap-1 text-primary"
-                        >
-                            <div className="bg-blue-100 p-3 rounded-full"><Share2 /></div>
-                            <span className="text-xs font-semibold">Share PDF</span>
-                        </button>
-
-                        <button
                             onClick={() => generateAndShareImage('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.png`)}
                             className="flex flex-col items-center gap-1 text-green-600"
                         >
