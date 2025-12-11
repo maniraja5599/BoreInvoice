@@ -6,7 +6,7 @@ import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo } = useInvoices();
+    const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo, isGoogleLoggedIn, syncStatus, lastSyncTime } = useInvoices();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const logoInputRef = React.useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -131,11 +131,26 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <button onClick={loginToGoogle} className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors text-orange-600 border border-orange-100">
-                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                    <Cloud size={24} />
+                            <button onClick={loginToGoogle} className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}>
+                                <div className="bg-white p-2 rounded-full shadow-sm relative">
+                                    <Cloud size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
+                                    {isGoogleLoggedIn && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                    )}
                                 </div>
-                                <span className="text-xs font-semibold">Sync to Google Drive</span>
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Auto-Sync On' : 'Connect Drive'}</span>
+                                    {isGoogleLoggedIn && syncStatus !== 'idle' && (
+                                        <span className={`text-[10px] uppercase font-bold mt-1 ${syncStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                                            {syncStatus === 'syncing' ? 'Syncing...' : syncStatus}
+                                        </span>
+                                    )}
+                                    {lastSyncTime && syncStatus === 'idle' && (
+                                        <span className="text-[9px] text-gray-500 mt-0.5">
+                                            {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                </div>
                             </button>
                             <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-primary border border-blue-100">
                                 <div className="bg-white p-2 rounded-full shadow-sm">

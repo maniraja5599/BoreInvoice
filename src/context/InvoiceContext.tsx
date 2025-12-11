@@ -23,6 +23,8 @@ interface InvoiceContextType {
     isGoogleLoggedIn: boolean;
     loginToGoogle: () => void;
     googleUser: any;
+    syncStatus: 'idle' | 'syncing' | 'success' | 'error';
+    lastSyncTime: Date | null;
 }
 
 interface AppSettings {
@@ -45,6 +47,8 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
     const [googleUser] = useState<any>(null); // Kept for interface compatibility
     const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
     useEffect(() => {
         const saved = localStorage.getItem('borewell_invoices');
@@ -92,9 +96,6 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                         if (tokenResponse && tokenResponse.access_token) {
                             setIsGoogleLoggedIn(true);
                             setAccessToken(tokenResponse.access_token);
-                            // If this was triggered by a login request, we can auto-upload if users expect "Sync" behavior.
-                            // But better to separate or have a specific handler.
-                            // However, the `handleLoginAndUpload` below overrides this callback dynamically.
                         }
                     },
                 });
@@ -103,62 +104,105 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     }, []);
 
-
-    const uploadToDriveInternal = async (token: string) => {
-        const dataStr = JSON.stringify(invoices, null, 2);
-        const fileName = `borewell_backup_${new Date().toISOString().split('T')[0]}.json`;
-        const metadata = {
-            name: fileName,
-            mimeType: 'application/json',
-            parents: ['root']
-        };
-
-        const fileContent = new Blob([dataStr], { type: 'application/json' });
-
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json; charset=UTF-8' }));
-        form.append('file', fileContent);
+    const findOrCreateSyncFile = async (token: string, data: any): Promise<string | null> => {
+        let fileId = localStorage.getItem('borewell_sync_file_id');
+        const fileName = 'borewell_invoices_sync.json';
 
         try {
-            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                },
-                body: form
-            });
-            const result = await response.json();
-            if (response.ok) {
-                alert("Backup uploaded to Google Drive successfully! File ID: " + result.id);
-            } else {
-                console.error("Upload error", result);
-                alert("Upload failed: " + (result.error?.message || "Unknown error"));
+            if (!fileId) {
+                // Search for file
+                const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and trashed=false&fields=files(id)`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const searchResult = await searchResponse.json();
+                if (searchResult.files && searchResult.files.length > 0) {
+                    fileId = searchResult.files[0].id;
+                    localStorage.setItem('borewell_sync_file_id', fileId!);
+                }
             }
-        } catch (error) {
-            console.error(error);
-            alert("Network error during upload");
-        }
-    }
 
-    // Combined Login & Upload Handler
+            if (!fileId) {
+                // Create new file
+                const metadata = {
+                    name: fileName,
+                    mimeType: 'application/json',
+                    parents: ['root']
+                };
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json; charset=UTF-8' }));
+                form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+
+                const createResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: form
+                });
+                const createResult = await createResponse.json();
+                if (createResult.id) {
+                    fileId = createResult.id;
+                    localStorage.setItem('borewell_sync_file_id', fileId!);
+                    return fileId;
+                }
+            } else {
+                // Update existing file
+                const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!updateResponse.ok) {
+                    localStorage.removeItem('borewell_sync_file_id');
+                    throw new Error('Failed to update file - might be deleted');
+                }
+                return fileId;
+            }
+        } catch (e) {
+            console.error("Sync File Error", e);
+            return null;
+        }
+        return null;
+    };
+
+    const performSync = async () => {
+        if (!isGoogleLoggedIn || !accessToken || invoices.length === 0) return;
+
+        setSyncStatus('syncing');
+        try {
+            await findOrCreateSyncFile(accessToken, invoices);
+            setSyncStatus('success');
+            setLastSyncTime(new Date());
+            setTimeout(() => setSyncStatus('idle'), 3000);
+        } catch (e) {
+            console.error(e);
+            setSyncStatus('error');
+        }
+    };
+
+    // Auto-sync effect
+    useEffect(() => {
+        if (isGoogleLoggedIn && accessToken) {
+            const timeoutId = setTimeout(() => {
+                performSync();
+            }, 5000);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [invoices, isGoogleLoggedIn, accessToken]);
+
+    // Combined Login Handler
     const loginToGoogle = () => {
         if (!CLIENT_ID) {
             alert("Please add VITE_GOOGLE_CLIENT_ID to .env file");
             return;
         }
-
-        // If already logged in and we have a token, just upload
-        if (isGoogleLoggedIn && accessToken) {
-            uploadToDriveInternal(accessToken);
-            return;
-        }
-
         if (!tokenClient) {
             alert("Google service not ready yet. Please wait a moment.");
             return;
         }
 
-        // Override callback to handle upload immediately after login
         tokenClient.callback = (resp: any) => {
             if (resp.error) {
                 console.error(resp);
@@ -166,7 +210,11 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
             setAccessToken(resp.access_token);
             setIsGoogleLoggedIn(true);
-            uploadToDriveInternal(resp.access_token);
+            // Trigger immediate sync on login
+            if (invoices.length > 0) {
+                // We can't call performSync immediately because state update is async, 
+                // but the useEffect will catch the change in isGoogleLoggedIn and trigger sync!
+            }
         };
 
         tokenClient.requestAccessToken({ prompt: 'consent' });
@@ -250,7 +298,21 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     return (
-        <InvoiceContext.Provider value={{ invoices, saveInvoice, deleteInvoice, exportBackup, importBackup, shareBackup, logo, setLogo, isGoogleLoggedIn, loginToGoogle, googleUser }}>
+        <InvoiceContext.Provider value={{
+            invoices,
+            saveInvoice,
+            deleteInvoice,
+            exportBackup,
+            importBackup,
+            shareBackup,
+            logo,
+            setLogo,
+            isGoogleLoggedIn,
+            loginToGoogle,
+            googleUser,
+            syncStatus,
+            lastSyncTime
+        }}>
             {children}
         </InvoiceContext.Provider>
     );
