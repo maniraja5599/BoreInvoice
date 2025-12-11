@@ -9,7 +9,7 @@ import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 interface InvoiceContextType {
     invoices: InvoiceData[];
-    saveInvoice: (invoice: InvoiceData) => void;
+    saveInvoice: (invoice: InvoiceData) => boolean;
     deleteInvoice: (id: string) => void;
     importBackup: (file: File) => Promise<void>;
     exportBackup: () => void;
@@ -146,15 +146,29 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const saveInvoice = (invoice: InvoiceData) => {
+        let success = true;
         setInvoices(prev => {
-            const existing = prev.findIndex(i => i.id === invoice.id);
+            // Check for duplicate invoice Number
+            const isDuplicate = prev.some(existing =>
+                existing.customer.invoiceNumber.toLowerCase() === invoice.customer.invoiceNumber.toLowerCase() &&
+                existing.id !== invoice.id
+            );
+
+            if (isDuplicate) {
+                alert(`Invoice Number "${invoice.customer.invoiceNumber}" already exists!`);
+                success = false;
+                return prev;
+            }
+
+            const existingIndex = prev.findIndex(i => i.id === invoice.id);
             let newInvoices;
-            if (existing >= 0) {
+            if (existingIndex >= 0) {
                 newInvoices = [...prev];
-                newInvoices[existing] = invoice;
+                newInvoices[existingIndex] = invoice;
             } else {
                 newInvoices = [invoice, ...prev];
             }
+
             // 1. Save Local
             localStorage.setItem('borewell_invoices', JSON.stringify(newInvoices));
             // 2. Sync Cloud
@@ -162,6 +176,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
             return newInvoices;
         });
+        return success;
     };
 
     const deleteInvoice = (id: string) => {

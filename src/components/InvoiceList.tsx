@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, FileImage, Pencil, Smartphone, ArrowLeft } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 
@@ -146,7 +146,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                     className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}
                                 >
                                     <div className="bg-white p-2 rounded-full shadow-sm relative">
-                                        <Cloud size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
+                                        <HardDrive size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
                                         {isGoogleLoggedIn && (
                                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                                         )}

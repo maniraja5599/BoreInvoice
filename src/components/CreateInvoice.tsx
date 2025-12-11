@@ -193,8 +193,10 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
             type: docType,
             boreType,
         };
-        saveInvoice(invoice);
-        alert(`${docType} Saved!`);
+        const success = saveInvoice(invoice);
+        if (success) {
+            alert(`${docType} Saved!`);
+        }
     };
 
     const invoiceData: InvoiceData = {
