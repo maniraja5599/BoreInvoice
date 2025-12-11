@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, Share2, FileImage } from 'lucide-react';
+import InvoicePreview from './InvoicePreview';
+import { generateAndSharePdf, generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
     const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo } = useInvoices();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const logoInputRef = React.useRef<HTMLInputElement>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [showSettings, setShowSettings] = useState(false);
+    const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
+    const previewRef = React.useRef<HTMLDivElement>(null);
 
     const filteredInvoices = invoices.filter(inv =>
         inv.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,8 +89,14 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                 <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
                                 <p className="text-xs text-gray-500">{inv.customer.date} • #{inv.customer.invoiceNumber}</p>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <span className="font-bold text-primary">₹{inv.totalAmount.toLocaleString()}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary mr-2">₹{inv.totalAmount.toLocaleString()}</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setPreviewInvoice(inv); }}
+                                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                                >
+                                    <Share2 size={18} />
+                                </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); deleteInvoice(inv.id); }}
                                     className="p-2 text-red-500 hover:bg-red-50 rounded-full"
@@ -154,6 +163,37 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         <div className="text-center pt-2">
                             <p className="text-[10px] text-gray-400">Version 1.0.0 • Anjaneya Borewells</p>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview / Share Modal */}
+            {previewInvoice && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex flex-col pt-10 overflow-y-auto">
+                    <div className="flex justify-end p-4 gap-4 px-4 sticky top-0">
+                        <button onClick={() => setPreviewInvoice(null)} className="bg-white p-2 rounded-full"><X /></button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-2 md:px-0">
+                        <InvoicePreview ref={previewRef} data={previewInvoice} />
+                    </div>
+
+                    <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl">
+                        <button
+                            onClick={() => generateAndSharePdf('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.pdf`)}
+                            className="flex flex-col items-center gap-1 text-primary"
+                        >
+                            <div className="bg-blue-100 p-3 rounded-full"><Share2 /></div>
+                            <span className="text-xs font-semibold">Share PDF</span>
+                        </button>
+
+                        <button
+                            onClick={() => generateAndShareImage('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.png`)}
+                            className="flex flex-col items-center gap-1 text-green-600"
+                        >
+                            <div className="bg-green-100 p-3 rounded-full"><FileImage /></div>
+                            <span className="text-xs font-semibold">Share Image</span>
+                        </button>
                     </div>
                 </div>
             )}
