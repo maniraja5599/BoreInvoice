@@ -19,7 +19,6 @@ export const generateAndSharePdf = async (elementId: string, fileName: string) =
 
         // If height exceeds A4 page height, scale it down to fit
         if (finalPdfHeight > pdfPageHeight) {
-            const scaleFactor = pdfPageHeight / finalPdfHeight;
             finalPdfHeight = pdfPageHeight;
             // We also need to adjust width to maintain aspect ratio effectively, 
             // but addImage takes width/height args. 
