@@ -3,7 +3,7 @@ import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
 import { FileText, Trash2, Upload, Download, Settings, X, Image, Cloud, Share2, FileImage } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
-import { generateAndSharePdf, generateAndShareImage } from '../utils/pdfGenerator';
+import { generateAndShareImage } from '../utils/pdfGenerator';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
     const { invoices, deleteInvoice, exportBackup, importBackup, loginToGoogle, logo, setLogo } = useInvoices();

@@ -4,7 +4,7 @@ import { TELESCOPIC_RATES } from '../types';
 import { useInvoices } from '../context/InvoiceContext';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
-import { Plus, Trash2, Save, Share2, FileImage, X, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, FileImage, X, ArrowLeft } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
