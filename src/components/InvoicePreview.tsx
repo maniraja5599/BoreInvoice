@@ -31,14 +31,14 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
     let sNo = 1;
 
     return (
-        <div ref={ref} className="bg-white p-6 max-w-2xl mx-auto text-xs border shadow-xl print:shadow-none print:border-none font-sans" id="invoice-preview">
+        <div ref={ref} className="bg-white p-2 md:p-6 max-w-2xl mx-auto text-xs border shadow-xl print:shadow-none print:border-none font-sans" id="invoice-preview">
             {/* Header */}
             <div className="flex justify-between items-start border-b-4 border-[#009900] pb-4 mb-4">
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-2 md:gap-4 items-center">
                     {logo ? (
-                        <img src={logo} alt="Logo" className="w-16 h-16 object-contain" />
+                        <img src={logo} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 object-contain" />
                     ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                        <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
                             No Logo
                         </div>
                     )}
@@ -46,8 +46,8 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                         <h1 className="text-sm md:text-xl font-normal text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wider">ஆழமான நம்பிக்கை!..</p>
-                        <div className="mt-1 text-[10px] text-gray-600 space-y-0.5 leading-tight">
+                        <p className="text-gray-600 font-bold text-[10px] md:text-xs uppercase tracking-wider">ஆழமான நம்பிக்கை!..</p>
+                        <div className="mt-1 text-[9px] md:text-[10px] text-gray-600 space-y-0.5 leading-tight">
                             <p className="font-medium">6/906-1, Sri Mahal Thirumana Mandapam</p>
                             <p>Trichy Road, Namakkal, Tamil Nadu 637001</p>
                             <p className="font-bold text-primary pt-1">Ph: 96596-57777, 94433-73573</p>
@@ -72,26 +72,26 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
             <div className="mb-4 bg-slate-50 p-2 rounded">
                 <h3 className="font-semibold text-gray-700 mb-1 border-b border-gray-200 pb-0.5">Bill To:</h3>
                 <p className="font-bold text-sm">{data.customer.name}</p>
-                <p>{data.customer.address}</p>
+                <p className="break-words">{data.customer.address}</p>
                 <p>Ph: {data.customer.phone}</p>
             </div>
 
             {/* Table */}
-            <div className="mb-6">
-                <table className="w-full text-left border-collapse">
+            <div className="mb-6 overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-full">
                     <thead>
                         <tr className="bg-primary text-white">
-                            <th className="p-1 w-10">S.No</th>
+                            <th className="p-1 w-8 md:w-10">S.No</th>
                             <th className="p-1">Description</th>
-                            <th className="p-1 text-right whitespace-nowrap">Qty / Depth</th>
+                            <th className="p-1 text-right whitespace-nowrap">Qty/Dpt</th>
                             <th className="p-1 text-right whitespace-nowrap">Rate</th>
-                            <th className="p-1 text-right whitespace-nowrap">Amount (₹)</th>
+                            <th className="p-1 text-right whitespace-nowrap">Amount</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {/* Drilling Charges Breakdown */}
                         <tr className="bg-gray-50">
-                            <td className="p-1 font-bold" colSpan={5}>Drilling Format Details (Total Depth: {data.borewell.depth} ft)</td>
+                            <td className="p-1 font-bold" colSpan={5}>Drilling Format Details (Depth: {data.borewell.depth}ft)</td>
                         </tr>
                         {breakdown.map((slab, index) => (
                             <tr key={index}>
@@ -107,23 +107,23 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                         {(data.borewell.casingDepth7 || 0) > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
-                                <td className="p-1">7" PVC Casing Pipe</td>
+                                <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none">7" Casing Pipe</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingDepth7} ft</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate7}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing7Cost.toLocaleString()}</td>
                             </tr>
-                        )}
+                        ))}
 
                         {/* 10" Casing */}
                         {(data.borewell.casingDepth10 || 0) > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
-                                <td className="p-1">10" PVC Casing Pipe</td>
+                                <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none">10" Casing Pipe</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingDepth10} ft</td>
                                 <td className="p-1 text-right whitespace-nowrap">{data.borewell.casingRate10}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{casing10Cost.toLocaleString()}</td>
                             </tr>
-                        )}
+                        ))}
 
                         {/* Other Charges */}
                         {data.borewell.bata > 0 && (
@@ -134,16 +134,16 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.bata.toLocaleString()}</td>
                             </tr>
-                        )}
+                        ))}
                         {data.borewell.transportCharges > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
-                                <td className="p-1">Transport Charges</td>
+                                <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none">Transport</td>
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.transportCharges.toLocaleString()}</td>
                             </tr>
-                        )}
+                        ))}
                         {data.borewell.extraTime > 0 && (
                             <tr>
                                 <td className="p-1">{sNo++}</td>
@@ -152,13 +152,13 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                                 <td className="p-1 text-right">-</td>
                                 <td className="p-1 text-right">{data.borewell.extraTime.toLocaleString()}</td>
                             </tr>
-                        )}
+                        ))}
 
                         {/* Extra Items */}
                         {data.items.map((item) => (
                             <tr key={item.id}>
                                 <td className="p-1">{sNo++}</td>
-                                <td className="p-1">{item.description}</td>
+                                <td className="p-1 whitespace-normal break-words max-w-[100px] md:max-w-none leading-tight">{item.description}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{item.quantity}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{item.rate}</td>
                                 <td className="p-1 text-right whitespace-nowrap">{item.amount.toLocaleString()}</td>
