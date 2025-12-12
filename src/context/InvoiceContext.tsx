@@ -145,10 +145,24 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Actions
     // Helper: Generate next invoice number dynamically
+    // Helper: Generate next invoice number dynamically
     const generateNextInvoiceNumber = () => {
         const maxFromList = invoices.reduce((max, inv) => {
-            const numPart = parseInt(inv.customer.invoiceNumber.replace(/\D/g, ''), 10);
-            return !isNaN(numPart) && numPart > max ? numPart : max;
+            // Strict parsing: Look for the number after the last hyphen or space
+            // Matches: "INV-123", "123", "Invoice 123"
+            const match = inv.customer.invoiceNumber.match(/(\d+)$/);
+            const numPart = match ? parseInt(match[1], 10) : 0;
+
+            // Filter out clearly unreasonable numbers (like phone numbers > 100000) unless user explicitly configured it high?
+            // Let's just be stricter about the pattern. 
+            // Better pattern: Look for INV-{digits} specifically if possible, or fallback to simple digits
+            const strictMatch = inv.customer.invoiceNumber.match(/INV-(\d+)/i);
+            const strictNum = strictMatch ? parseInt(strictMatch[1], 10) : 0;
+
+            // Use strict match if found, otherwise fall back to loose match but cap it to avoid phone numbers
+            const candidate = strictNum > 0 ? strictNum : (numPart < 100000 ? numPart : 0);
+
+            return candidate > max ? candidate : max;
         }, 0);
 
         // Respect the manual setting if it's higher than the calculated next number
