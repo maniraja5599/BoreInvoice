@@ -72,28 +72,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                 </div>
 
                 <div className="flex gap-2 items-center">
-                    {/* View Mode Toggle (Only visible if in Recycle Bin) */}
-                    {viewMode === 'deleted' && (
-                        <>
-                            <button
-                                onClick={() => {
-                                    const confirmText = prompt("WARNING: This will permanently delete ALL invoices in the Recycle Bin.\n\nType DELETE to confirm:");
-                                    if (confirmText === "DELETE") {
-                                        emptyRecycleBin();
-                                        alert("Recycle Bin Emptied.");
-                                    } else if (confirmText !== null) {
-                                        alert("Deletion Cancelled: You must type DELETE exactly.");
-                                    }
-                                }}
-                                className="p-2 bg-red-100 text-red-600 rounded-full shadow hover:bg-red-200 transition-colors flex items-center gap-1 px-3 text-xs font-bold"
-                            >
-                                <Trash2 size={14} /> Empty Bin
-                            </button>
-                            <button onClick={() => setViewMode('active')} className="p-2 bg-white rounded-full shadow text-primary font-bold text-xs px-3 self-center">
-                                Back
-                            </button>
-                        </>
-                    )}
+
 
 
 
@@ -203,6 +182,32 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     {syncStatus === 'success' && <Check size={20} className="text-green-500" />}
                     {syncStatus === 'error' && <AlertCircle size={20} className="text-red-500" />}
                     {syncStatus === 'idle' && <Cloud size={20} className="text-gray-400" />}
+                </div>
+            )}
+
+            {/* RECYCLE BIN CONTROLS (Floating Bottom) */}
+            {viewMode === 'deleted' && (
+                <div className="fixed bottom-6 w-full max-w-md px-4 z-20 flex gap-4 justify-center left-1/2 -translate-x-1/2">
+                    <button
+                        onClick={() => setViewMode('active')}
+                        className="flex-1 bg-white text-gray-700 py-3 rounded-xl shadow-lg font-bold border border-gray-100 flex items-center justify-center gap-2 hover:bg-gray-50"
+                    >
+                        <ArrowLeft size={18} /> Back
+                    </button>
+                    <button
+                        onClick={() => {
+                            const confirmText = prompt("WARNING: This will permanently delete ALL invoices in the Recycle Bin.\n\nType DELETE to confirm:");
+                            if (confirmText === "DELETE") {
+                                emptyRecycleBin();
+                                alert("Recycle Bin Emptied.");
+                            } else if (confirmText !== null) {
+                                alert("Deletion Cancelled: You must type DELETE exactly.");
+                            }
+                        }}
+                        className="flex-1 bg-red-500 text-white py-3 rounded-xl shadow-lg font-bold flex items-center justify-center gap-2 hover:bg-red-600"
+                    >
+                        <Trash2 size={18} /> Empty Bin
+                    </button>
                 </div>
             )}
 
