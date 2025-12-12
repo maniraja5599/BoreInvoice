@@ -38,14 +38,14 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
     let sNo = 1;
 
     return (
-        <div ref={ref} className="bg-white p-2 md:p-6 max-w-2xl mx-auto text-xs border shadow-xl print:shadow-none print:border-none font-sans" id="invoice-preview">
+        <div ref={ref} className="bg-white p-4 md:p-8 max-w-2xl mx-auto text-xs border shadow-2xl print:shadow-none print:border-none font-sans rounded-none md:rounded-sm" id="invoice-preview">
             {/* Header */}
             <div className="flex justify-between items-start border-b-4 border-[#009900] pb-4 mb-4">
                 <div className="flex gap-2 md:gap-4 items-center">
                     {logo ? (
-                        <img src={logo} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 object-contain" />
+                        <img src={logo} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 object-contain rounded-xl" />
                     ) : (
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">
+                        <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
                             No Logo
                         </div>
                     )}

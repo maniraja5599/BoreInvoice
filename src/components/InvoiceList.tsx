@@ -58,39 +58,39 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     return (
         <div className="bg-slate-50 min-h-screen p-4 pb-20">
             {/* Header */}
-            <div className="flex justify-between items-start mb-6">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6 sticky top-0 bg-slate-50/90 backdrop-blur-sm z-20 py-2">
                 <div className='flex items-center gap-3 text-left'>
-                    {logo ? <img src={logo} className="w-14 h-14 rounded-xl object-contain bg-white shadow-md shadow-gray-200" /> : null}
+                    {logo ? <img src={logo} className="w-14 h-14 rounded-2xl object-cover bg-white shadow-lg shadow-gray-200 ring-2 ring-white" /> : null}
                     <div>
-                        <h1 className="text-xl md:text-2xl font-bold text-[#009900] tracking-wider whitespace-nowrap" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                        <h1 className="text-xl md:text-2xl font-bold text-[#009900] tracking-wider whitespace-nowrap drop-shadow-sm" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
-                        <p className="text-[10px] md:text-xs text-gray-600 font-bold mt-0.5 ml-1">
-                            {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'ஆழமான நம்பிக்கை!..'}
+                        <p className="text-[10px] md:text-xs text-gray-500 font-bold mt-1 ml-1 tracking-wide uppercase">
+                            {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'Deep Trust • Pure Water'}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex gap-2 items-center">
-
-
-
-
                     <button
                         onClick={() => setShowSettings(true)}
-                        className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
+                        className="p-3 bg-white rounded-full shadow-md text-gray-600 hover:bg-gray-50 transition-all hover:scale-105 active:scale-95 border border-gray-100"
                     >
-                        <Settings size={24} />
+                        <Settings size={22} />
                     </button>
                 </div>
             </div>
 
             {/* Search Bar */}
-            <div className="mb-4">
+            <div className="mb-6 relative">
+                <div className="absolute top-1/2 -translate-y-1/2 left-4 text-gray-400">
+                    <FileText size={18} />
+                </div>
                 <input
                     type="text"
-                    placeholder={viewMode === 'deleted' ? "Search deleted invoices..." : "Search by name, phone, or invoice #..."}
-                    className="w-full p-3 rounded-lg border border-gray-200 shadow-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                    placeholder={viewMode === 'deleted' ? "Search deleted invoices..." : "Search by name, phone..."}
+                    className="w-full p-4 pl-12 rounded-2xl border-none bg-white shadow-sm focus:ring-2 focus:ring-primary/20 focus:shadow-md transition-all text-gray-700 font-medium placeholder:text-gray-400"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -104,35 +104,44 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     {viewMode === 'active' && <button onClick={onCreate} className="mt-4 text-primary font-semibold">Create New</button>}
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {filteredInvoices.map(inv => (
-                        <div key={inv.id} className={`p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer transition-colors ${viewMode === 'deleted' ? 'bg-red-50 border border-red-100' : 'bg-white hover:bg-gray-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
-                            <div>
-                                <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    {inv.customer.date} • #{inv.customer.invoiceNumber}
-                                    {isGoogleLoggedIn && <Cloud size={12} className="text-green-500 ml-1" />}
-                                </p>
+                        <div key={inv.id} className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border ${viewMode === 'deleted' ? 'bg-red-50/50 border-red-100' : 'bg-white border-white hover:border-blue-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                        {inv.customer.name}
+                                        {isGoogleLoggedIn && <Cloud size={14} className="text-green-500" />}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-md uppercase tracking-wide">#{inv.customer.invoiceNumber}</span>
+                                        <span className="text-xs text-gray-400 font-medium">{inv.customer.date}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2 line-clamp-1">{inv.customer.address || 'No address provided'}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`block font-black text-xl ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
+                                    <span className="text-[10px] text-gray-400 font-medium uppercase">{inv.type}</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className={`font-bold mr-2 ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
 
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-3">
                                 {viewMode === 'active' ? (
                                     <>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
-                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-full"
+                                            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-2"
                                         >
-                                            <Pencil size={18} />
+                                            <Pencil size={14} /> Edit
                                         </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
                                             }}
-                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+                                            className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
                                         >
-                                            <Trash2 size={18} />
+                                            <Trash2 size={14} /> Delete
                                         </button>
                                     </>
                                 ) : (
@@ -142,18 +151,18 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                                 e.stopPropagation();
                                                 if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
                                             }}
-                                            className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold"
+                                            className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 flex items-center gap-2"
                                         >
-                                            Restore
+                                            <Check size={14} /> Restore
                                         </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (confirm("PERMANENTLY DELETE? This cannot be undone.")) permanentDeleteInvoice(inv.id);
                                             }}
-                                            className="p-2 text-red-600 hover:bg-red-100 rounded-full"
+                                            className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-xs font-bold hover:bg-red-200 flex items-center gap-2"
                                         >
-                                            <X size={18} />
+                                            <X size={14} /> Delete Forever
                                         </button>
                                     </>
                                 )}
@@ -213,17 +222,17 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
 
             {/* Settings Modal */}
             {showSettings && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md transition-all animate-in fade-in" onClick={() => setShowSettings(false)}>
                     {!showInstallGuide && !showUserGuide ? (
-                        <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-6" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center border-b pb-4">
-                                <h2 className="text-xl font-bold text-gray-800">Settings</h2>
-                                <button onClick={() => setShowSettings(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
+                        <div className="bg-white/95 backdrop-blur-xl rounded-3xl w-full max-w-sm p-6 shadow-2xl ring-1 ring-black/5 space-y-6 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                                <h2 className="text-xl font-bold text-gray-800 tracking-tight">App Settings</h2>
+                                <button onClick={() => setShowSettings(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition-colors">
                                     <X size={20} className="text-gray-600" />
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {/* FIREBASE AUTH BUTTON */}
                                 <button
                                     onClick={() => {
@@ -233,75 +242,73 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                             loginToGoogle();
                                         }
                                     }}
-                                    className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-colors border ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100'}`}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border shadow-sm active:scale-95 ${isGoogleLoggedIn ? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' : 'bg-gray-50 hover:bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
                                 >
-                                    <div className="bg-white p-2 rounded-full shadow-sm relative">
-                                        <HardDrive size={24} className={isGoogleLoggedIn ? 'text-green-600' : 'text-orange-500'} />
+                                    <div className={`p-2.5 rounded-full shadow-sm relative ${isGoogleLoggedIn ? 'bg-white' : 'bg-white'}`}>
+                                        <HardDrive size={20} className={isGoogleLoggedIn ? 'text-green-600' : 'text-gray-500'} />
                                         {isGoogleLoggedIn && (
                                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                                         )}
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className="text-xs font-semibold">{isGoogleLoggedIn ? 'Synced' : 'Connect'}</span>
+                                        <span className="text-xs font-bold">{isGoogleLoggedIn ? 'Synced' : 'Connect'}</span>
                                         {isGoogleLoggedIn ? (
-                                            <span className="text-[10px] text-green-600 font-bold mt-1">
-                                                {syncStatus === 'syncing' ? 'Syncing...' : 'Tap to Logout'}
-                                            </span>
+                                            <span className="text-[10px] text-green-600 font-bold mt-0.5">Logout</span>
                                         ) : (
-                                            <span className="text-[10px] text-orange-500 mt-1">Tap to Login</span>
+                                            <span className="text-[10px] text-gray-400 mt-0.5">Google Drive</span>
                                         )}
                                     </div>
                                 </button>
 
                                 {/* HELP GUIDE BUTTON */}
-                                <button onClick={() => setShowUserGuide(true)} className="flex flex-col items-center gap-2 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors text-indigo-600 border border-indigo-100">
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <HelpCircle size={24} />
+                                <button onClick={() => setShowUserGuide(true)} className="flex flex-col items-center gap-2 p-3 bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-all text-indigo-600 border border-indigo-100 shadow-sm active:scale-95">
+                                    <div className="bg-white p-2.5 rounded-full shadow-sm">
+                                        <HelpCircle size={20} />
                                     </div>
-                                    <span className="text-xs font-semibold">Help Guide</span>
+                                    <span className="text-xs font-bold">Help Guide</span>
                                 </button>
 
-                                <button onClick={() => setShowInstallGuide(true)} className="flex flex-col items-center gap-2 p-4 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors text-teal-600 border border-teal-100">
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <Smartphone size={24} />
+                                <button onClick={() => setShowInstallGuide(true)} className="flex flex-col items-center gap-2 p-3 bg-teal-50 hover:bg-teal-100 rounded-2xl transition-all text-teal-600 border border-teal-100 shadow-sm active:scale-95">
+                                    <div className="bg-white p-2.5 rounded-full shadow-sm">
+                                        <Smartphone size={20} />
                                     </div>
-                                    <span className="text-xs font-semibold">Install App</span>
+                                    <span className="text-xs font-bold">Install App</span>
                                 </button>
 
-                                <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors text-primary border border-blue-100">
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <Image size={24} />
+                                <button onClick={() => logoInputRef.current?.click()} className="flex flex-col items-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all text-blue-600 border border-blue-100 shadow-sm active:scale-95">
+                                    <div className="bg-white p-2.5 rounded-full shadow-sm">
+                                        <Image size={20} />
                                     </div>
-                                    <span className="text-xs font-semibold">Logo</span>
+                                    <span className="text-xs font-bold">Logo</span>
                                 </button>
                                 <input type="file" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
 
-                                <button onClick={exportBackup} className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors text-purple-600 border border-purple-100">
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <Download size={24} />
+                                <button onClick={exportBackup} className="flex flex-col items-center gap-2 p-3 bg-purple-50 hover:bg-purple-100 rounded-2xl transition-all text-purple-600 border border-purple-100 shadow-sm active:scale-95">
+                                    <div className="bg-white p-2.5 rounded-full shadow-sm">
+                                        <Download size={20} />
                                     </div>
-                                    <span className="text-xs font-semibold">Backup</span>
+                                    <span className="text-xs font-bold">Backup</span>
                                 </button>
 
-                                <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors text-green-600 border border-green-100">
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <Upload size={24} />
+                                <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-2 p-3 bg-amber-50 hover:bg-amber-100 rounded-2xl transition-all text-amber-600 border border-amber-100 shadow-sm active:scale-95">
+                                    <div className="bg-white p-2.5 rounded-full shadow-sm">
+                                        <Upload size={20} />
                                     </div>
-                                    <span className="text-xs font-semibold">Restore</span>
+                                    <span className="text-xs font-bold">Restore</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
 
                                 {/* CONFIG: Next Invoice Number */}
-                                <div className="col-span-2 md:col-span-3 bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-gray-500 uppercase">Next Invoice #</span>
-                                        <span className="text-xs text-gray-400">Auto-increments</span>
+                                <div className="col-span-2 md:col-span-3 bg-gray-50/80 p-3 rounded-2xl border border-gray-100 flex items-center justify-between shadow-inner">
+                                    <div className="flex flex-col pl-1">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Next Invoice #</span>
+                                        <span className="text-[10px] text-gray-400 font-medium">Auto-increments</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-mono text-gray-500">INV-</span>
+                                    <div className="flex items-center gap-2 bg-white p-1 pr-2 rounded-xl shadow-sm border border-gray-100">
+                                        <span className="font-mono text-gray-400 text-xs pl-2">INV-</span>
                                         <input
                                             type="number"
-                                            className="w-20 p-1 border rounded text-center font-bold text-gray-700"
+                                            className="w-16 p-1 text-sm font-bold text-gray-700 bg-transparent focus:outline-none text-right"
                                             value={nextInvoiceNumber}
                                             onChange={(e) => setNextInvoiceNumber(Number(e.target.value))}
                                         />
@@ -311,18 +318,16 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                 {/* RECYCLE BIN BUTTON */}
                                 <button
                                     onClick={() => { setViewMode('deleted'); setShowSettings(false); }}
-                                    className="flex flex-col items-center gap-2 p-4 bg-red-50 hover:bg-red-100 rounded-xl transition-colors text-red-600 border border-red-100"
+                                    className="col-span-2 md:col-span-3 flex items-center justify-center gap-2 p-3 bg-red-50 hover:bg-red-100 rounded-2xl transition-all text-red-600 border border-red-100 shadow-sm active:scale-95"
                                 >
-                                    <div className="bg-white p-2 rounded-full shadow-sm">
-                                        <Trash2 size={24} />
-                                    </div>
-                                    <span className="text-xs font-semibold">Recycle Bin</span>
+                                    <Trash2 size={18} />
+                                    <span className="text-xs font-bold">Recycle Bin</span>
                                 </button>
 
                             </div>
 
                             <div className="text-center pt-2">
-                                <p className="text-[10px] text-gray-400">Version 1.0.3 • Anjaneya Borewells</p>
+                                <p className="text-[10px] text-gray-400 font-medium">Version 1.0.4 • Anjaneya Borewells</p>
                             </div>
                         </div>
                     ) : showUserGuide ? (
@@ -337,18 +342,18 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             </div>
 
                             <div className="space-y-4 text-sm text-gray-600">
-                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                    <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">📱 For Android (Chrome)</h3>
-                                    <ol className="list-decimal ml-4 space-y-1 text-xs">
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">📱 For Android (Chrome)</h3>
+                                    <ol className="list-decimal ml-4 space-y-2 text-xs font-medium">
                                         <li>Tap the <strong>three dots (⋮)</strong> in the top right.</li>
                                         <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install App"</strong>.</li>
                                         <li>Confirm by tapping <strong>Add/Install</strong>.</li>
                                     </ol>
                                 </div>
 
-                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                    <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">🍎 For iOS (Safari)</h3>
-                                    <ol className="list-decimal ml-4 space-y-1 text-xs">
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">🍎 For iOS (Safari)</h3>
+                                    <ol className="list-decimal ml-4 space-y-2 text-xs font-medium">
                                         <li>Tap the <strong>Share</strong> button (box with arrow) at the bottom.</li>
                                         <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
                                         <li>Tap <strong>Add</strong> in the top right corner.</li>
@@ -356,7 +361,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                 </div>
                             </div>
                             <div className="text-center pt-2">
-                                <p className="text-[10px] text-primary bg-blue-50 p-2 rounded">Note: This makes the app work offline and look like a native app!</p>
+                                <p className="text-[10px] text-blue-600 bg-blue-50 p-3 rounded-xl font-bold border border-blue-100">Note: This makes the app work offline!</p>
                             </div>
                         </div>
                     )}
@@ -365,33 +370,40 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
 
             {/* Preview / Share Modal */}
             {previewInvoice && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex flex-col pt-10 overflow-y-auto">
-                    <div className="flex justify-end p-4 gap-4 px-4 sticky top-0">
-                        <button onClick={() => setPreviewInvoice(null)} className="bg-white p-2 rounded-full"><X /></button>
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col pt-4 overflow-y-auto animate-in slide-in-from-bottom-10 duration-200 backdrop-blur-sm">
+                    <div className="flex justify-end p-4 gap-4 px-4 sticky top-0 z-10 pointer-events-none">
+                        <button
+                            onClick={() => setPreviewInvoice(null)}
+                            className="bg-white/10 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/20 transition-all pointer-events-auto shadow-lg"
+                        >
+                            <X size={24} />
+                        </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-2 md:px-0">
-                        <InvoicePreview ref={previewRef} data={previewInvoice} />
+                    <div className="flex-1 overflow-y-auto px-2 md:px-0 pb-32">
+                        <div className="scale-95 origin-top transition-transform">
+                            <InvoicePreview ref={previewRef} data={previewInvoice} />
+                        </div>
                     </div>
 
-                    <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl gap-4">
+                    <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl p-5 flex justify-around items-center rounded-t-3xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] gap-6 z-20 pb-8 border-t border-white/50">
                         <button
                             onClick={() => {
                                 const link = generateWhatsAppLink(previewInvoice);
                                 window.open(link, '_blank');
                             }}
-                            className="flex flex-col items-center gap-1 text-green-600"
+                            className="flex-1 flex flex-col items-center gap-2 text-green-700 bg-green-50/50 p-3 rounded-2xl active:scale-95 transition-all hover:bg-green-100"
                         >
-                            <div className="bg-green-50 p-3 rounded-full border border-green-200"><MessageCircle size={24} /></div>
-                            <span className="text-[10px] font-semibold">WhatsApp Text</span>
+                            <div className="bg-white p-3 rounded-full shadow-sm text-green-600 border border-green-100"><MessageCircle size={24} /></div>
+                            <span className="text-[10px] font-bold uppercase tracking-wide">WhatsApp</span>
                         </button>
 
                         <button
                             onClick={() => generateAndShareImage('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.png`)}
-                            className="flex flex-col items-center gap-1 text-blue-600"
+                            className="flex-1 flex flex-col items-center gap-2 text-blue-700 bg-blue-50/50 p-3 rounded-2xl active:scale-95 transition-all hover:bg-blue-100"
                         >
-                            <div className="bg-blue-50 p-3 rounded-full border border-blue-200"><FileImage size={24} /></div>
-                            <span className="text-[10px] font-semibold">Share Image</span>
+                            <div className="bg-white p-3 rounded-full shadow-sm text-blue-600 border border-blue-100"><FileImage size={24} /></div>
+                            <span className="text-[10px] font-bold uppercase tracking-wide">Share Image</span>
                         </button>
                     </div>
                 </div>

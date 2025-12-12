@@ -250,27 +250,30 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     return (
         <div className="bg-slate-50 min-h-screen pb-20">
             {/* Header */}
-            <div className="bg-white p-4 shadow-sm flex items-center justify-between sticky top-0 z-10 box-border">
+            <div className="bg-white/80 backdrop-blur-md p-4 shadow-sm flex items-center justify-between sticky top-0 z-30 border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                         <ArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
-                    <h1 className="text-lg font-bold text-gray-800">{initialData ? 'Edit Invoice' : 'New Invoice'}</h1>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">{initialData ? 'Edit Invoice' : 'New Invoice'}</h1>
                 </div>
                 {/* Fixed Total Fixed Right */}
-                <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 text-right">
-                    <p className="text-[10px] text-gray-500 font-medium">Estimated Total</p>
-                    <p className="text-lg font-bold text-primary leading-none">₹{grandTotal.toLocaleString()}</p>
+                <div className="bg-green-50/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-green-100 text-right shadow-sm">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Estimated Total</p>
+                    <p className="text-xl font-black text-primary leading-none tracking-tight">₹{grandTotal.toLocaleString()}</p>
                 </div>
             </div>
 
             <div className="p-4 max-w-2xl mx-auto space-y-6">
 
                 {/* Customer Section */}
-                <section className="bg-white p-4 rounded-xl shadow-sm space-y-4">
-                    <div className="flex justify-between items-center border-b pb-2">
-                        <h2 className="font-semibold text-lg text-primary">Customer Details</h2>
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                <section className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 space-y-4">
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                        <h2 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                            <span className="w-1 h-6 bg-primary rounded-full"></span>
+                            Customer Details
+                        </h2>
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
                             <button
                                 onClick={() => {
                                     setDocType('Invoice');
@@ -278,7 +281,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                                         setCustomer({ ...customer, invoiceNumber: customer.invoiceNumber.replace('QTN-', 'INV-') });
                                     }
                                 }}
-                                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${docType === 'Invoice' ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                                className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all shadow-sm ${docType === 'Invoice' ? 'bg-white text-primary ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700 shadow-none'}`}
                             >
                                 Invoice
                             </button>
@@ -289,24 +292,24 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                                         setCustomer({ ...customer, invoiceNumber: customer.invoiceNumber.replace('INV-', 'QTN-') });
                                     }
                                 }}
-                                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${docType === 'Quotation' ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                                className={`px-4 py-1.5 text-xs rounded-lg font-bold transition-all shadow-sm ${docType === 'Quotation' ? 'bg-white text-primary ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700 shadow-none'}`}
                             >
                                 Quotation
                             </button>
                         </div>
                     </div>
                     {/* Bore Type Toggle */}
-                    <div className="flex justify-end pt-2">
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <div className="flex justify-end pt-1">
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
                             <button
                                 onClick={() => setBoreType('New Bore')}
-                                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${boreType === 'New Bore' ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                                className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${boreType === 'New Bore' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-gray-500'}`}
                             >
                                 New Bore
                             </button>
                             <button
                                 onClick={() => setBoreType('Repair Bore')}
-                                className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${boreType === 'Repair Bore' ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                                className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${boreType === 'Repair Bore' ? 'bg-white text-primary shadow-sm ring-1 ring-black/5' : 'text-gray-500'}`}
                             >
                                 Repair Bore
                             </button>
@@ -314,69 +317,87 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Moved Date and Invoice Number to TOP */}
-                        <input
-                            type="date" className="w-full p-2 border rounded-lg"
-                            value={customer.date} onChange={e => setCustomer({ ...customer, date: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
-                        <input
-                            type="text" placeholder={`${docType} Number`} className="w-full p-2 border rounded-lg"
-                            value={customer.invoiceNumber} onChange={e => setCustomer({ ...customer, invoiceNumber: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Date</label>
+                            <input
+                                type="date" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-medium"
+                                value={customer.date} onChange={e => setCustomer({ ...customer, date: e.target.value })}
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Invoice Number</label>
+                            <input
+                                type="text" placeholder={`${docType} Number`} className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-bold text-gray-700"
+                                value={customer.invoiceNumber} onChange={e => setCustomer({ ...customer, invoiceNumber: e.target.value })}
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </div>
                         {/* Name and Phone below */}
-                        <input
-                            type="text" placeholder="Customer Name" className="w-full p-2 border rounded-lg"
-                            value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
-                        <input
-                            type="tel" placeholder="Phone Number" className="w-full p-2 border rounded-lg"
-                            value={customer.phone}
-                            onChange={e => {
-                                const val = e.target.value.replace(/\D/g, '');
-                                if (val.length <= 10) setCustomer({ ...customer, phone: val });
-                            }}
-                            onFocus={(e) => e.target.select()}
-                        />
-                        <textarea
-                            placeholder="Address" className="w-full p-2 border rounded-lg md:col-span-2" rows={2}
-                            value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })}
-                            onFocus={(e) => e.target.select()}
-                        />
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Name</label>
+                            <input
+                                type="text" placeholder="Enter Customer Name" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Phone</label>
+                            <input
+                                type="tel" placeholder="10-digit Number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-mono"
+                                value={customer.phone}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    if (val.length <= 10) setCustomer({ ...customer, phone: val });
+                                }}
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </div>
+                        <div className="md:col-span-2 space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Address</label>
+                            <textarea
+                                placeholder="Enter Address" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" rows={2}
+                                value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })}
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </div>
                     </div>
                 </section>
 
                 {/* Borewell Details */}
-                <section className="bg-white p-4 rounded-xl shadow-sm space-y-4">
-                    <div className="flex justify-between items-center border-b pb-2">
-                        <h2 className="font-semibold text-lg text-primary">Drilling Details</h2>
+                <section className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 space-y-4">
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                        <h2 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                            <span className="w-1 h-6 bg-blue-500 rounded-full"></span>
+                            Drilling Details
+                        </h2>
                         <button
                             onClick={() => setShowRateModal(true)}
-                            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-medium transition-colors"
+                            className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full font-bold transition-colors border border-blue-100"
                         >
                             Manage Rates
                         </button>
                     </div>
                     {/* Buffer Config */}
                     <div className="flex justify-end pt-1">
-                        <label className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded cursor-pointer">
+                        <label className="flex items-center gap-2 text-xs font-medium text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg cursor-pointer border border-gray-100 hover:bg-gray-100 transition-colors">
                             <input
                                 type="checkbox"
                                 checked={(borewell.drillingBuffer || 0) > 0}
                                 onChange={(e) => {
                                     setBorewell({ ...borewell, drillingBuffer: e.target.checked ? 10 : 0 });
                                 }}
-                                className="rounded text-primary focus:ring-primary"
+                                className="rounded text-primary focus:ring-primary w-4 h-4"
                             />
                             <span>Allow Slab Extension</span>
                         </label>
                         {(borewell.drillingBuffer || 0) > 0 && (
-                            <div className="flex items-center gap-1 ml-2">
-                                <label className="text-[10px] text-gray-500">Max Ext:</label>
+                            <div className="flex items-center gap-2 ml-3 bg-gray-50 px-2 rounded-lg border border-gray-100">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase">Max Ext:</label>
                                 <input
                                     type="number"
-                                    className="w-12 p-1 text-xs border rounded text-center bg-gray-50 focus:ring-2 focus:ring-primary outline-none"
+                                    className="w-12 p-1 text-xs font-bold text-center bg-transparent focus:outline-none text-primary"
                                     value={borewell.drillingBuffer}
                                     onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
@@ -384,38 +405,39 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                                         setBorewell({ ...borewell, drillingBuffer: val === '' ? 0 : Number(val) });
                                     }}
                                 />
-                                <span className="text-[10px] text-gray-500">ft</span>
+                                <span className="text-[10px] font-bold text-gray-400">ft</span>
                             </div>
                         )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs text-gray-500">Total Depth (ft)</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">Total Depth (ft)</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-blue-50/30 border border-blue-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none font-bold text-lg text-blue-900"
                                 value={borewell.depth || ''} onChange={e => setBorewell({ ...borewell, depth: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div className="flex items-end pb-2">
-                            <label className="text-xs text-gray-500 font-bold text-green-600">Drilling Cost: ₹{drillingCost.toLocaleString()}</label>
+                        <div className="flex flex-col justify-end pb-3 pl-2">
+                            <div className="text-xs text-gray-400 font-bold uppercase">Estimated Cost</div>
+                            <div className="text-xl font-black text-green-600">₹{drillingCost.toLocaleString()}</div>
                         </div>
 
                         {/* REPAIR BORE FIELDS */}
                         {boreType === 'Repair Bore' && (
                             <>
-                                <div>
-                                    <label className="text-xs text-gray-500 font-bold text-orange-600">Old Bore Depth (ft)</label>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-orange-600 uppercase pl-1">Old Bore Depth (ft)</label>
                                     <input
-                                        type="number" className="w-full p-2 border-2 border-orange-100 rounded-lg bg-orange-50 focus:border-orange-300"
+                                        type="number" className="w-full p-3 bg-orange-50 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none font-bold text-orange-900"
                                         value={borewell.oldBoreDepth || ''} onChange={e => setBorewell({ ...borewell, oldBoreDepth: Number(e.target.value) })}
                                         onFocus={(e) => e.target.select()}
                                     />
                                 </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 font-bold text-orange-600">Flushing Rate / ft</label>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-orange-600 uppercase pl-1">Flushing Rate / ft</label>
                                     <input
-                                        type="number" className="w-full p-2 border-2 border-orange-100 rounded-lg bg-orange-50 focus:border-orange-300"
+                                        type="number" className="w-full p-3 bg-orange-50 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none font-bold text-orange-900"
                                         value={borewell.flushingRate || ''} onChange={e => setBorewell({ ...borewell, flushingRate: Number(e.target.value) })}
                                         onFocus={(e) => e.target.select()}
                                     />
@@ -423,34 +445,34 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                             </>
                         )}
 
-                        <div>
-                            <label className="text-xs text-gray-500">7" Casing Depth (ft)</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">7" Case Depth</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.casingDepth7 || ''} onChange={e => setBorewell({ ...borewell, casingDepth7: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">7" Rate / ft</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">7" Rate</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.casingRate7 || ''} onChange={e => setBorewell({ ...borewell, casingRate7: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">10" Casing Depth (ft)</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">10" Case Depth</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.casingDepth10 || ''} onChange={e => setBorewell({ ...borewell, casingDepth10: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">10" Rate / ft</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">10" Rate</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.casingRate10 || ''} onChange={e => setBorewell({ ...borewell, casingRate10: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
@@ -459,37 +481,40 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                 </section>
 
                 {/* Other Charges */}
-                <section className="bg-white p-4 rounded-xl shadow-sm space-y-4">
-                    <h2 className="font-semibold text-lg text-primary border-b pb-2">Other Charges</h2>
+                <section className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 space-y-4">
+                    <h2 className="font-bold text-lg text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-2">
+                        <span className="w-1 h-6 bg-purple-500 rounded-full"></span>
+                        Other Charges
+                    </h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                            <label className="text-xs text-gray-500">Bata</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">Bata</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.bata || ''} onChange={e => setBorewell({ ...borewell, bata: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">Transport</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">Transport</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.transportCharges || ''} onChange={e => setBorewell({ ...borewell, transportCharges: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">Extra Time</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase pl-1">Extra Time</label>
                             <input
-                                type="number" className="w-full p-2 border rounded-lg"
+                                type="number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={borewell.extraTime || ''} onChange={e => setBorewell({ ...borewell, extraTime: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 text-red-600 font-semibold">Discount</label>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-red-500 uppercase pl-1">Discount</label>
                             <input
-                                type="number" className="w-full p-2 border-2 border-red-50 rounded-lg text-red-600 focus:border-red-300"
+                                type="number" className="w-full p-3 bg-red-50 border border-red-100 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none text-red-600 font-bold"
                                 value={borewell.discountAmount || ''} onChange={e => setBorewell({ ...borewell, discountAmount: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
@@ -498,43 +523,46 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                 </section>
 
                 {/* Extra Items */}
-                <section className="bg-white p-4 rounded-xl shadow-sm space-y-4">
-                    <h2 className="font-semibold text-lg text-primary border-b pb-2">Extra Items (Cap, Motor, etc.)</h2>
+                <section className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 space-y-4">
+                    <h2 className="font-bold text-lg text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-2">
+                        <span className="w-1 h-6 bg-amber-500 rounded-full"></span>
+                        Extra Items <span className="text-xs font-normal text-gray-400 ml-1">(Pipes, Motor, Cap)</span>
+                    </h2>
 
                     {/* Responsive Input Group */}
-                    <div className="flex flex-col md:flex-row gap-2 mb-2">
+                    <div className="flex flex-col md:flex-row gap-2 mb-2 p-1">
                         <input
-                            type="text" placeholder="Item Name" className="w-full md:flex-1 p-2 border rounded-lg"
+                            type="text" placeholder="Item Name" className="w-full md:flex-1 p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                             value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })}
                             onFocus={(e) => e.target.select()}
                         />
                         <div className="flex gap-2">
                             <input
-                                type="number" placeholder="Qty" className="w-16 md:w-20 p-2 border rounded-lg shrink-0"
+                                type="number" placeholder="Qty" className="w-20 p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-center"
                                 value={newItem.quantity || ''} onChange={e => setNewItem({ ...newItem, quantity: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
                             <input
-                                type="number" placeholder="Rate" className="flex-1 min-w-0 md:w-32 p-2 border rounded-lg"
+                                type="number" placeholder="Rate" className="flex-1 w-24 p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={newItem.rate || ''} onChange={e => setNewItem({ ...newItem, rate: Number(e.target.value) })}
                                 onFocus={(e) => e.target.select()}
                             />
-                            <button onClick={handleAddItem} className="bg-secondary text-white p-2 rounded-lg w-12 shrink-0 flex justify-center items-center"><Plus /></button>
+                            <button onClick={handleAddItem} className="bg-amber-500 text-white p-3 rounded-xl w-14 shrink-0 flex justify-center items-center shadow-md hover:bg-amber-600 transition-colors"><Plus /></button>
                         </div>
                     </div>
 
                     {/* Quick Add Saved Items */}
                     {savedItems.length > 0 && (
                         <div className="mb-4">
-                            <p className="text-xs text-gray-500 mb-2">Recent Items (Click to fill):</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-2 pl-1">Recent Items</p>
                             <div className="flex flex-wrap gap-2">
                                 {savedItems.map((item, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => setNewItem({ ...newItem, description: item.description, rate: item.rate })}
-                                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full border border-gray-200 transition-colors"
+                                        className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full border border-gray-200 transition-all font-medium active:scale-95"
                                     >
-                                        {item.description} (₹{item.rate})
+                                        {item.description}
                                     </button>
                                 ))}
                             </div>
@@ -543,11 +571,11 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
 
                     <div className="space-y-2">
                         {items.map(item => (
-                            <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                                <span className="text-sm">{item.description} ({item.quantity} x {item.rate})</span>
-                                <div className="flex items-center gap-3">
-                                    <span className="font-semibold">₹{item.amount}</span>
-                                    <button onClick={() => handleRemoveItem(item.id)} className="text-red-500"><Trash2 size={16} /></button>
+                            <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <span className="text-sm text-gray-700 font-medium">{item.description} <span className="text-gray-400 text-xs">({item.quantity} x ₹{item.rate})</span></span>
+                                <div className="flex items-center gap-4">
+                                    <span className="font-bold text-gray-800">₹{item.amount.toLocaleString()}</span>
+                                    <button onClick={() => handleRemoveItem(item.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-full transition-colors"><Trash2 size={16} /></button>
                                 </div>
                             </div>
                         ))}
