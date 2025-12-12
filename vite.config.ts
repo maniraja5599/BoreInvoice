@@ -19,19 +19,19 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'tree_logo.png',
+            src: 'company_logo.jpg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/jpeg'
           },
           {
-            src: 'tree_logo.png',
+            src: 'company_logo.jpg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/jpeg'
           },
           {
-            src: 'tree_logo.png',
+            src: 'company_logo.jpg',
             sizes: 'any',
-            type: 'image/png'
+            type: 'image/jpeg'
           }
         ]
       }
