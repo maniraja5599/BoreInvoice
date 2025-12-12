@@ -67,7 +67,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             ANJANEYA BO<span className="text-red-600">R</span>EWELLS
                         </h1>
                         <p className="text-[10px] md:text-xs text-gray-500 font-bold mt-1 ml-1 tracking-wide uppercase">
-                            {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'Deep Trust • Pure Water'}
+                            {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'ஆழமான நம்பிக்கை!'}
                         </p>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     {filteredInvoices.map(inv => (
                         <div key={inv.id} className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border ${viewMode === 'deleted' ? 'bg-red-50/50 border-red-100' : 'bg-white border-white hover:border-blue-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
                             <div className="flex justify-between items-start">
-                                <div>
+                                <div className="flex-1">
                                     <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                                         {inv.customer.name}
                                         {isGoogleLoggedIn && <Cloud size={14} className="text-green-500" />}
@@ -118,54 +118,55 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                         <span className="text-xs text-gray-400 font-medium">{inv.customer.date}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 mt-2 line-clamp-1">{inv.customer.address || 'No address provided'}</p>
+
+                                    {/* Action Buttons Integrated Here */}
+                                    <div className="mt-3 flex gap-2">
+                                        {viewMode === 'active' ? (
+                                            <>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
+                                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-colors flex items-center gap-1.5 border border-blue-100"
+                                                >
+                                                    <Pencil size={12} /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5 border border-red-100"
+                                                >
+                                                    <Trash2 size={12} /> Delete
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[10px] font-bold hover:bg-green-100 flex items-center gap-1.5 border border-green-100"
+                                                >
+                                                    <Check size={12} /> Restore
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm("PERMANENTLY DELETE? This cannot be undone.")) permanentDeleteInvoice(inv.id);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-200 flex items-center gap-1.5 border border-red-200"
+                                                >
+                                                    <X size={12} /> Delete Forever
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right pl-2">
                                     <span className={`block font-black text-xl ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
                                     <span className="text-[10px] text-gray-400 font-medium uppercase">{inv.type}</span>
                                 </div>
-                            </div>
-
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-3">
-                                {viewMode === 'active' ? (
-                                    <>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
-                                            className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-2"
-                                        >
-                                            <Pencil size={14} /> Edit
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
-                                            }}
-                                            className="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
-                                        >
-                                            <Trash2 size={14} /> Delete
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
-                                            }}
-                                            className="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 flex items-center gap-2"
-                                        >
-                                            <Check size={14} /> Restore
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (confirm("PERMANENTLY DELETE? This cannot be undone.")) permanentDeleteInvoice(inv.id);
-                                            }}
-                                            className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-xs font-bold hover:bg-red-200 flex items-center gap-2"
-                                        >
-                                            <X size={14} /> Delete Forever
-                                        </button>
-                                    </>
-                                )}
                             </div>
                         </div>
                     ))}
