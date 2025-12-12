@@ -1,5 +1,6 @@
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
+import { calculateDrillingCost } from './calculator';
 
 export const generateAndSharePdf = async (elementId: string, fileName: string) => {
     const element = document.getElementById(elementId);
@@ -110,14 +111,66 @@ export const generateAndShareImage = async (elementId: string, fileName: string)
 };
 
 export const generateWhatsAppLink = (invoice: any) => {
-    const text = `*INVOICE DETAILS*
-----------------
-*Customer:* ${invoice.customer.name}
-*Invoice #:* ${invoice.customer.invoiceNumber}
-*Date:* ${invoice.customer.date}
-*Amount:* ₹${invoice.totalAmount.toLocaleString()}
-----------------
-*Anjaneya Borewells*`;
+    const { customer, borewell, items, totalAmount, boreType } = invoice;
+
+    // Calculate core drilling cost re-using the utility to get precise breakdown if needed, 
+    // or just use the data we have if we trusted it. 
+    // Since we don't store the sub-total for drilling specifically in the DB separate from the grand total (we just calculate it live usually),
+    // let's re-calculate it here for the text to be safe.
+    const { totalCost: drillingCost } = calculateDrillingCost(
+        borewell.depth,
+        borewell.oldBoreDepth,
+        borewell.flushingRate,
+        borewell.appliedRates,
+        borewell.drillingBuffer
+    );
+
+    let text = `🧾 *INVOICE DETAILS* 🧾\n`;
+    text += `--------------------------------\n`;
+    text += `👤 *${customer.name}*\n`;
+    text += `📞 ${customer.phone || 'N/A'}\n`; // Check if phone exists
+    text += `📍 ${customer.address ? customer.address.split(',')[0] : ''}\n`; // Short address
+    text += `📅 ${customer.date}  |  #️⃣ ${customer.invoiceNumber.replace('INV-', '')}\n`;
+    text += `--------------------------------\n\n`;
+
+    // Bore Details
+    text += `🏗️ *${boreType || 'Drilling'} Work*\n`;
+    text += `🔹 Depth: *${borewell.depth} ft*\n`;
+    text += `🔹 Drill Cost: ₹${drillingCost.toLocaleString()}\n`;
+
+    // Casing
+    if (borewell.casingDepth7 > 0) {
+        text += `\n🔩 *7" Casing Pipe*\n`;
+        text += `   ${borewell.casingDepth7} ft x ₹${borewell.casingRate7} = ₹${(borewell.casingDepth7 * borewell.casingRate7).toLocaleString()}\n`;
+    }
+    if (borewell.casingDepth10 > 0) {
+        text += `\n🔩 *10" Casing Pipe*\n`;
+        text += `   ${borewell.casingDepth10} ft x ₹${borewell.casingRate10} = ₹${(borewell.casingDepth10 * borewell.casingRate10).toLocaleString()}\n`;
+    }
+
+    // Other Charges
+    if (borewell.bata > 0) text += `\n👷 Bata: ₹${borewell.bata.toLocaleString()}\n`;
+    if (borewell.transportCharges > 0) text += `🚚 Transport: ₹${borewell.transportCharges.toLocaleString()}\n`;
+    if (borewell.extraTime > 0) text += `⏱️ Extra Time: ₹${borewell.extraTime.toLocaleString()}\n`;
+
+    // Items
+    if (items && items.length > 0) {
+        text += `\n📦 *Extra Items:*\n`;
+        items.forEach((item: any) => {
+            text += `   • ${item.description}: ${item.quantity} x ${item.rate} = ₹${item.amount.toLocaleString()}\n`;
+        });
+    }
+
+    // Discount
+    if (borewell.discountAmount > 0) {
+        text += `\n🎁 *Discount:* -₹${borewell.discountAmount.toLocaleString()}\n`;
+    }
+
+    text += `\n--------------------------------\n`;
+    text += `💰 *GRAND TOTAL: ₹${totalAmount.toLocaleString()}* 💰\n`;
+    text += `--------------------------------\n`;
+    text += `\n*Anjaneya Borewells* 🚜\n`;
+    text += `Short of Water? Go Deeper! 💧`;
 
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
 };
