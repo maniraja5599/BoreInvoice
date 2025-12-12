@@ -173,7 +173,8 @@ export const generateWhatsAppLink = (invoice: any) => {
     text += `Short of Water? Go Deeper! 💧\n`;
     text += `🌐 https://anjaneyaborewells.com/`;
 
-    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const phone = customer.phone ? `91${customer.phone}` : '';
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 };
 
 const downloadLink = (url: string, name: string) => {
