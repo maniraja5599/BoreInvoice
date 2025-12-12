@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle, Cloud } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage } from '../utils/pdfGenerator';
 import UserGuide from './UserGuide';
@@ -111,7 +111,10 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         <div key={inv.id} className={`p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer transition-colors ${viewMode === 'deleted' ? 'bg-red-50 border border-red-100' : 'bg-white hover:bg-gray-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
                             <div>
                                 <h3 className="font-bold text-gray-800">{inv.customer.name}</h3>
-                                <p className="text-xs text-gray-500">{inv.customer.date} • #{inv.customer.invoiceNumber}</p>
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    {inv.customer.date} • #{inv.customer.invoiceNumber}
+                                    {isGoogleLoggedIn && <Cloud size={12} className="text-green-500 ml-1" />}
+                                </p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className={`font-bold mr-2 ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
