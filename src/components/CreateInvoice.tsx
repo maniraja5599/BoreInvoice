@@ -362,13 +362,18 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         </label>
                         {(borewell.drillingBuffer || 0) > 0 && (
                             <div className="flex items-center gap-1 ml-2">
-                                <label className="text-[10px] text-gray-500">Avg. 10ft:</label>
+                                <label className="text-[10px] text-gray-500">Max Ext:</label>
                                 <input
                                     type="number"
-                                    className="w-12 p-1 text-xs border rounded text-center bg-gray-50"
+                                    className="w-12 p-1 text-xs border rounded text-center bg-gray-50 focus:ring-2 focus:ring-primary outline-none"
                                     value={borewell.drillingBuffer}
-                                    onChange={(e) => setBorewell({ ...borewell, drillingBuffer: Number(e.target.value) })}
+                                    onFocus={(e) => e.target.select()}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setBorewell({ ...borewell, drillingBuffer: val === '' ? 0 : Number(val) });
+                                    }}
                                 />
+                                <span className="text-[10px] text-gray-500">ft</span>
                             </div>
                         )}
                     </div>
