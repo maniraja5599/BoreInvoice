@@ -177,6 +177,12 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     const grandTotal = drillingCost + casing7Cost + casing10Cost + safeTransport + safeBata + safeExtraTime + itemsTotal - safeDiscount;
 
     const handleSave = () => {
+        // Validation: Phone Number
+        if (customer.phone && customer.phone.length !== 10) {
+            alert("Phone number must be exactly 10 digits!");
+            return;
+        }
+
         // Save Default Rates for future use
         const ratesToSave = {
             casingRate7: borewell.casingRate7,
@@ -306,7 +312,11 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         />
                         <input
                             type="tel" placeholder="Phone Number" className="w-full p-2 border rounded-lg"
-                            value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })}
+                            value={customer.phone}
+                            onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                if (val.length <= 10) setCustomer({ ...customer, phone: val });
+                            }}
                             onFocus={(e) => e.target.select()}
                         />
                         <textarea
