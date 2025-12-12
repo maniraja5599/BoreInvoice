@@ -189,8 +189,34 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         );
 
         if (isDuplicate) {
-            const proceed = window.confirm(`Invoice Number "${invoice.customer.invoiceNumber}" already exists! Do you want to create it anyway?`);
-            if (!proceed) return false;
+            // Smart Resolution: Suggest the next available number
+            const nextSafeNum = generateNextInvoiceNumber();
+            const newSafeId = `INV-${nextSafeNum}`;
+
+            const useAutoIncrement = window.confirm(
+                `Invoice Number "${invoice.customer.invoiceNumber}" already exists!\n\n` +
+                `Click OK to auto-save as "${newSafeId}" instead.\n` +
+                `Click Cancel for other options.`
+            );
+
+            if (useAutoIncrement) {
+                // Apply the fix
+                invoice = {
+                    ...invoice,
+                    customer: {
+                        ...invoice.customer,
+                        invoiceNumber: newSafeId
+                    }
+                };
+            } else {
+                // If they cancelled auto-fix, ask if they want to force the duplicate
+                const forceDuplicate = window.confirm(
+                    `Do you want to force save "${invoice.customer.invoiceNumber}" as a duplicate?\n\n` +
+                    `Click OK to allow duplicate.\n` +
+                    `Click Cancel to stop and edit manually.`
+                );
+                if (!forceDuplicate) return false;
+            }
         }
 
         let success = true;
