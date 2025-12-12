@@ -7,9 +7,13 @@ import { Plus, Trash2, Save, X, ArrowLeft, Eye } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
-    const { saveInvoice } = useInvoices();
+    const { saveInvoice, nextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
     const previewRef = useRef<HTMLDivElement>(null);
     const [showPreview, setShowPreview] = useState(false);
+
+    // Form State
+    // Use nextInvoiceNumber specific to this render
+    const defaultInvoiceNumber = `INV-${String(nextInvoiceNumber).padStart(3, '0')}`;
 
     // Form State
     const [customer, setCustomer] = useState<CustomerDetails>(initialData?.customer || {
@@ -17,7 +21,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         phone: '',
         address: '',
         date: new Date().toISOString().split('T')[0],
-        invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+        invoiceNumber: defaultInvoiceNumber,
     });
 
     const [borewell, setBorewell] = useState<BorewellDetails>(() => {
@@ -195,6 +199,13 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         };
         const success = saveInvoice(invoice);
         if (success) {
+            // Only increment if creating NEW invoice using the suggested number
+            // Or if we just want to always increment when creating new
+            if (!initialData) {
+                // Parse current 'next' number to see if we should increment from THAT or from what the user typed?
+                // Safest: Just increment the global counter so next one is unique.
+                setNextInvoiceNumber(nextInvoiceNumber + 1);
+            }
             alert(`${docType} Saved!`);
         }
     };

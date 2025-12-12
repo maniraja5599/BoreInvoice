@@ -7,7 +7,7 @@ import { generateAndShareImage } from '../utils/pdfGenerator';
 import UserGuide from './UserGuide';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus } = useInvoices();
+    const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus, nextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
     const isGoogleLoggedIn = !!user;
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -256,6 +256,23 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                     <span className="text-xs font-semibold">Restore</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".json" />
+
+                                {/* CONFIG: Next Invoice Number */}
+                                <div className="col-span-2 md:col-span-3 bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-gray-500 uppercase">Next Invoice #</span>
+                                        <span className="text-xs text-gray-400">Auto-increments</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-gray-500">INV-</span>
+                                        <input
+                                            type="number"
+                                            className="w-20 p-1 border rounded text-center font-bold text-gray-700"
+                                            value={nextInvoiceNumber}
+                                            onChange={(e) => setNextInvoiceNumber(Number(e.target.value))}
+                                        />
+                                    </div>
+                                </div>
 
                                 {/* RECYCLE BIN BUTTON */}
                                 <button

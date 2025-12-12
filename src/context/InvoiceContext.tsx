@@ -25,6 +25,8 @@ interface InvoiceContextType {
     logout: () => Promise<void>;
     syncStatus: 'idle' | 'syncing' | 'success' | 'error';
     lastSyncTime: Date | null;
+    nextInvoiceNumber: number;
+    setNextInvoiceNumber: (num: number) => void;
 }
 
 interface AppSettings {
@@ -36,6 +38,7 @@ const InvoiceContext = createContext<InvoiceContextType | undefined>(undefined);
 export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [invoices, setInvoices] = useState<InvoiceData[]>([]);
     const [logo, setLogoState] = useState<string | null>(defaultLogo);
+    const [nextInvoiceNumber, setNextInvoiceNumber] = useState<number>(1);
 
     // Auth & Sync State
     const [user, setUser] = useState<User | null>(null);
@@ -46,6 +49,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     useEffect(() => {
         const saved = localStorage.getItem('borewell_invoices');
         const savedSettings = localStorage.getItem('borewell_settings');
+        const savedNextNum = localStorage.getItem('borewell_next_invoice_number');
         if (saved) {
             try {
                 setInvoices(JSON.parse(saved));
@@ -58,6 +62,9 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const parsed = JSON.parse(savedSettings);
                 if (parsed.logo) setLogoState(parsed.logo);
             } catch (e) { console.error("Failed settings", e); }
+        }
+        if (savedNextNum) {
+            setNextInvoiceNumber(parseInt(savedNextNum, 10));
         }
     }, []);
 
@@ -81,22 +88,27 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 if (data.invoices && Array.isArray(data.invoices)) {
-                    // Update Local State with Cloud Data
-                    // Note: This is a simple "Cloud Wins" strategy. 
-                    // For a basic sync, this ensures all devices see the same data.
                     setInvoices(data.invoices);
-                    // Also update localStorage to keep it fresh for offline start
                     localStorage.setItem('borewell_invoices', JSON.stringify(data.invoices));
-
-                    setLastSyncTime(new Date());
-                    setSyncStatus('success');
-                    setTimeout(() => setSyncStatus('idle'), 2000);
                 }
+
+                // Sync Next Invoice Number
+                if (data.nextInvoiceNumber) {
+                    setNextInvoiceNumber(data.nextInvoiceNumber);
+                    localStorage.setItem('borewell_next_invoice_number', data.nextInvoiceNumber.toString());
+                }
+
+                setLastSyncTime(new Date());
+                setSyncStatus('success');
+                setTimeout(() => setSyncStatus('idle'), 2000);
             } else {
-                // New user (or first time using Firebase)
-                // If we have local data, upload it to seed the cloud
+                // New user: seed cloud
                 if (invoices.length > 0) {
-                    setDoc(userDocRef, { invoices: invoices, lastUpdated: new Date() }, { merge: true });
+                    setDoc(userDocRef, {
+                        invoices: invoices,
+                        nextInvoiceNumber: nextInvoiceNumber,
+                        lastUpdated: new Date()
+                    }, { merge: true });
                 }
                 setSyncStatus('idle');
             }
@@ -109,14 +121,17 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, [user]);
 
     // Helper: Push to Cloud
-    const syncToCloud = async (newInvoices: InvoiceData[]) => {
+    const syncToCloud = async (newInvoices: InvoiceData[], newNextNum?: number) => {
         if (!user) return;
         setSyncStatus('syncing');
         try {
-            await setDoc(doc(db, 'users', user.uid), {
+            const payload: any = {
                 invoices: newInvoices,
                 lastUpdated: new Date()
-            }, { merge: true });
+            };
+            if (newNextNum !== undefined) payload.nextInvoiceNumber = newNextNum;
+
+            await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
 
             setSyncStatus('success');
             setTimeout(() => setSyncStatus('idle'), 2000);
@@ -127,6 +142,12 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     // Actions
+    const updateNextInvoiceNumber = (num: number) => {
+        setNextInvoiceNumber(num);
+        localStorage.setItem('borewell_next_invoice_number', num.toString());
+        syncToCloud(invoices, num);
+    };
+
     const loginToGoogle = async () => {
         try {
             await signInWithPopup(auth, googleProvider);
@@ -277,7 +298,9 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             loginToGoogle,
             logout,
             syncStatus,
-            lastSyncTime
+            lastSyncTime,
+            nextInvoiceNumber,
+            setNextInvoiceNumber: updateNextInvoiceNumber
         }}>
             {children}
         </InvoiceContext.Provider>
