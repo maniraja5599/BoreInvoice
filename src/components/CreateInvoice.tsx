@@ -222,6 +222,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                 setNextInvoiceNumber(nextInvoiceNumber + 1);
             }
             alert(`${docType} Saved!`);
+            onBack();
         }
     };
 
