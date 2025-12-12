@@ -7,9 +7,14 @@ import { Plus, Trash2, Save, X, ArrowLeft, Eye } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
-    const { saveInvoice, generateNextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
+    const { saveInvoice, generateNextInvoiceNumber, setNextInvoiceNumber, invoices } = useInvoices();
     const previewRef = useRef<HTMLDivElement>(null);
     const [showPreview, setShowPreview] = useState(false);
+
+    // Get historical data for autocomplete
+    const uniqueNames = Array.from(new Set(invoices.map(i => i.customer.name).filter(Boolean)));
+    const uniquePhones = Array.from(new Set(invoices.map(i => i.customer.phone).filter(Boolean)));
+    const uniqueAddresses = Array.from(new Set(invoices.map(i => i.customer.address).filter(Boolean)));
 
     // Form State
     // Calculate smart default number
@@ -337,30 +342,45 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         <div className="space-y-1">
                             <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Name</label>
                             <input
-                                type="text" placeholder="Enter Customer Name" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                type="text" list="name-suggestions" placeholder="Enter Customer Name" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })}
                                 onFocus={(e) => e.target.select()}
+                                autoComplete="off"
                             />
+                            <datalist id="name-suggestions">
+                                {uniqueNames.map((name, i) => <option key={i} value={name} />)}
+                            </datalist>
                         </div>
                         <div className="space-y-1">
                             <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Phone</label>
                             <input
-                                type="tel" placeholder="10-digit Number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-mono"
+                                type="tel" list="phone-suggestions" placeholder="10-digit Number" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-mono"
                                 value={customer.phone}
                                 onChange={e => {
                                     const val = e.target.value.replace(/\D/g, '');
                                     if (val.length <= 10) setCustomer({ ...customer, phone: val });
                                 }}
                                 onFocus={(e) => e.target.select()}
+                                autoComplete="off"
                             />
+                            <datalist id="phone-suggestions">
+                                {uniquePhones.map((phone, i) => <option key={i} value={phone} />)}
+                            </datalist>
                         </div>
                         <div className="md:col-span-2 space-y-1">
                             <label className="text-[10px] uppercase font-bold text-gray-400 pl-1">Address</label>
-                            <textarea
-                                placeholder="Enter Address" className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" rows={2}
+                            <input
+                                type="text"
+                                list="address-suggestions"
+                                placeholder="Enter Address (City, Village...)"
+                                className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                                 value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })}
                                 onFocus={(e) => e.target.select()}
+                                autoComplete="off"
                             />
+                            <datalist id="address-suggestions">
+                                {uniqueAddresses.map((addr, i) => <option key={i} value={addr} />)}
+                            </datalist>
                         </div>
                     </div>
                 </section>
@@ -635,7 +655,6 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                                 <button onClick={() => setShowRateModal(false)} className="p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
                             </div>
 
-                            {/* Profile Manager Bar */}
                             {/* Profile Manager Bar */}
                             <div className="px-4 pt-4 border-b pb-4">
                                 <div className="flex justify-between items-center mb-2">
