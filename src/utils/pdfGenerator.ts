@@ -109,6 +109,19 @@ export const generateAndShareImage = async (elementId: string, fileName: string)
     }
 };
 
+export const generateWhatsAppLink = (invoice: any) => {
+    const text = `*INVOICE DETAILS*
+----------------
+*Customer:* ${invoice.customer.name}
+*Invoice #:* ${invoice.customer.invoiceNumber}
+*Date:* ${invoice.customer.date}
+*Amount:* ₹${invoice.totalAmount.toLocaleString()}
+----------------
+*Anjaneya Borewells*`;
+
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+};
+
 const downloadLink = (url: string, name: string) => {
     const link = document.createElement('a');
     link.download = name;

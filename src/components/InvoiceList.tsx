@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle, Cloud } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle, Cloud, MessageCircle } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
-import { generateAndShareImage } from '../utils/pdfGenerator';
+import { generateAndShareImage, generateWhatsAppLink } from '../utils/pdfGenerator';
 import UserGuide from './UserGuide';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
@@ -340,13 +340,24 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         <InvoicePreview ref={previewRef} data={previewInvoice} />
                     </div>
 
-                    <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl">
+                    <div className="bg-white p-4 flex justify-around items-center sticky bottom-0 pb-8 rounded-t-xl gap-4">
                         <button
-                            onClick={() => generateAndShareImage('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.png`)}
+                            onClick={() => {
+                                const link = generateWhatsAppLink(previewInvoice);
+                                window.open(link, '_blank');
+                            }}
                             className="flex flex-col items-center gap-1 text-green-600"
                         >
-                            <div className="bg-green-100 p-3 rounded-full"><FileImage /></div>
-                            <span className="text-xs font-semibold">Share Image</span>
+                            <div className="bg-green-50 p-3 rounded-full border border-green-200"><MessageCircle size={24} /></div>
+                            <span className="text-[10px] font-semibold">WhatsApp Text</span>
+                        </button>
+
+                        <button
+                            onClick={() => generateAndShareImage('invoice-preview', `${previewInvoice.type}-${previewInvoice.customer.name}.png`)}
+                            className="flex flex-col items-center gap-1 text-blue-600"
+                        >
+                            <div className="bg-blue-50 p-3 rounded-full border border-blue-200"><FileImage size={24} /></div>
+                            <span className="text-[10px] font-semibold">Share Image</span>
                         </button>
                     </div>
                 </div>
