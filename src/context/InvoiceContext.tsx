@@ -177,8 +177,8 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         );
 
         if (isDuplicate) {
-            alert(`Invoice Number "${invoice.customer.invoiceNumber}" already exists! Please use a unique number.`);
-            return false;
+            const proceed = window.confirm(`Invoice Number "${invoice.customer.invoiceNumber}" already exists! Do you want to create it anyway?`);
+            if (!proceed) return false;
         }
 
         let success = true;
