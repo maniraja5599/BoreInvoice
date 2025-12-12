@@ -116,8 +116,8 @@ export const generateWhatsAppLink = (invoice: any) => {
     // Calculate core drilling cost re-using the utility to get precise breakdown if needed, 
     // or just use the data we have if we trusted it. 
     // Since we don't store the sub-total for drilling specifically in the DB separate from the grand total (we just calculate it live usually),
-    // let's re-calculate it here for the text to be safe.
-    const { totalCost: drillingCost } = calculateDrillingCost(
+    // Let's re-calculate it here for the text to be safe.
+    const { totalCost: drillingCost, breakdown } = calculateDrillingCost(
         borewell.depth,
         borewell.oldBoreDepth,
         borewell.flushingRate,
@@ -136,6 +136,12 @@ export const generateWhatsAppLink = (invoice: any) => {
     // Bore Details
     text += `🏗️ *${boreType || 'Drilling'} Work*\n`;
     text += `🔹 Depth: *${borewell.depth} ft*\n`;
+
+    // Add Slab Breakdown
+    breakdown.forEach(slab => {
+        text += `   • ${slab.range}ft: ${slab.depth}ft x ₹${slab.rate} = ₹${slab.amount.toLocaleString()}\n`;
+    });
+
     text += `🔹 Drill Cost: ₹${drillingCost.toLocaleString()}\n`;
 
     // Casing
