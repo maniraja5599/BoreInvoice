@@ -13,6 +13,7 @@ interface InvoiceContextType {
     deleteInvoice: (id: string) => void;
     restoreInvoice: (id: string) => void;
     permanentDeleteInvoice: (id: string) => void;
+    emptyRecycleBin: () => void;
     importBackup: (file: File) => Promise<void>;
     exportBackup: () => void;
     shareBackup: () => Promise<void>;
@@ -246,6 +247,15 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
     };
 
+    const emptyRecycleBin = () => {
+        setInvoices(prev => {
+            const newInvoices = prev.filter(i => !i.isDeleted);
+            localStorage.setItem('borewell_invoices', JSON.stringify(newInvoices));
+            syncToCloud(newInvoices);
+            return newInvoices;
+        });
+    };
+
     const exportBackup = () => {
         const dataStr = JSON.stringify(invoices);
         const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
@@ -302,6 +312,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             deleteInvoice,
             restoreInvoice,
             permanentDeleteInvoice,
+            emptyRecycleBin,
             exportBackup,
             importBackup,
             shareBackup,

@@ -7,7 +7,7 @@ import { generateAndShareImage, generateWhatsAppLink } from '../utils/pdfGenerat
 import UserGuide from './UserGuide';
 
 const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: () => void }> = ({ onEdit, onCreate }) => {
-    const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus, nextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
+    const { invoices, deleteInvoice, restoreInvoice, permanentDeleteInvoice, emptyRecycleBin, exportBackup, importBackup, loginToGoogle, logout, logo, setLogo, user, syncStatus, nextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
     const isGoogleLoggedIn = !!user;
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -71,12 +71,28 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                     {/* View Mode Toggle (Only visible if in Recycle Bin) */}
                     {viewMode === 'deleted' && (
-                        <button onClick={() => setViewMode('active')} className="p-2 bg-white rounded-full shadow text-primary font-bold text-xs px-3 self-center">
-                            Back
-                        </button>
+                        <>
+                            <button
+                                onClick={() => {
+                                    const confirmText = prompt("WARNING: This will permanently delete ALL invoices in the Recycle Bin.\n\nType DELETE to confirm:");
+                                    if (confirmText === "DELETE") {
+                                        emptyRecycleBin();
+                                        alert("Recycle Bin Emptied.");
+                                    } else if (confirmText !== null) {
+                                        alert("Deletion Cancelled: You must type DELETE exactly.");
+                                    }
+                                }}
+                                className="p-2 bg-red-100 text-red-600 rounded-full shadow hover:bg-red-200 transition-colors flex items-center gap-1 px-3 text-xs font-bold"
+                            >
+                                <Trash2 size={14} /> Empty Bin
+                            </button>
+                            <button onClick={() => setViewMode('active')} className="p-2 bg-white rounded-full shadow text-primary font-bold text-xs px-3 self-center">
+                                Back
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={() => setShowSettings(true)}
