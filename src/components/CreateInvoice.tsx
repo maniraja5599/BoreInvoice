@@ -62,6 +62,13 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         };
     });
 
+    // Initialize rates from saved invoice if available
+    React.useEffect(() => {
+        if (initialData?.borewell?.appliedRates) {
+            setSlabRates(initialData.borewell.appliedRates);
+        }
+    }, [initialData]);
+
     // Ensure numeric values
     const safeCasing7 = Number(borewell.casingDepth7) || 0;
     const safeRate7 = Number(borewell.casingRate7) || 0;
@@ -198,7 +205,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
         const invoice: InvoiceData = {
             id: initialData?.id || Date.now().toString(),
             customer,
-            borewell,
+            borewell: { ...borewell, appliedRates: slabRates },
             items,
             totalAmount: grandTotal,
             createdAt: initialData?.createdAt || Date.now(),
@@ -221,7 +228,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     const invoiceData: InvoiceData = {
         id: 'preview',
         customer,
-        borewell,
+        borewell: { ...borewell, appliedRates: slabRates },
         items,
         totalAmount: grandTotal,
         createdAt: Date.now(),

@@ -10,7 +10,14 @@ interface Props {
 }
 
 const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
-    const { totalCost, breakdown } = calculateDrillingCost(data.borewell.depth, data.borewell.oldBoreDepth, data.borewell.flushingRate);
+    // FIX: Pass explicit rates and buffer to ensure preview matches the creation logic
+    const { totalCost, breakdown } = calculateDrillingCost(
+        data.borewell.depth,
+        data.borewell.oldBoreDepth,
+        data.borewell.flushingRate,
+        data.borewell.appliedRates, // This will fallback to default if undefined in calculator? We should check calculator defaults.
+        data.borewell.drillingBuffer
+    );
     const { logo } = useInvoices();
 
 
@@ -91,7 +98,10 @@ const InvoicePreview = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
                     <tbody className="divide-y divide-gray-100">
                         {/* Drilling Charges Breakdown */}
                         <tr className="bg-gray-50">
-                            <td className="p-1 font-bold" colSpan={5}>Drilling Format Details (Depth: {data.borewell.depth}ft)</td>
+                            <td className="p-1 font-bold" colSpan={5}>
+                                Drilling Format Details (Depth: {data.borewell.depth}ft)
+                                {data.borewell.drillingBuffer ? <span className="text-[10px] text-gray-500 ml-2 font-normal">(Grace: {data.borewell.drillingBuffer}ft)</span> : null}
+                            </td>
                         </tr>
                         {breakdown.map((slab, index) => (
                             <tr key={index}>

@@ -31,6 +31,7 @@ export interface BorewellDetails {
     oldBoreDepth?: number;
     flushingRate?: number;
     drillingBuffer?: number; // Grace limit in feet (e.g. 10)
+    appliedRates?: SlabRate[];
 }
 
 export interface CustomerDetails {
