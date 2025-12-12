@@ -170,7 +170,8 @@ export const generateWhatsAppLink = (invoice: any) => {
     text += `💰 *GRAND TOTAL: ₹${totalAmount.toLocaleString()}* 💰\n`;
     text += `--------------------------------\n`;
     text += `\n*Anjaneya Borewells* 🚜\n`;
-    text += `Short of Water? Go Deeper! 💧`;
+    text += `Short of Water? Go Deeper! 💧\n`;
+    text += `🌐 https://anjaneyaborewells.com/`;
 
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
 };
