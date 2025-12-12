@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useInvoices } from '../context/InvoiceContext';
 import type { InvoiceData } from '../types';
-import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle, Cloud, MessageCircle } from 'lucide-react';
+import { FileText, Trash2, Upload, Download, Settings, X, Image, HardDrive, FileImage, Pencil, Smartphone, ArrowLeft, HelpCircle, Cloud, MessageCircle, RefreshCw, Check, AlertCircle } from 'lucide-react';
 import InvoicePreview from './InvoicePreview';
 import { generateAndShareImage, generateWhatsAppLink } from '../utils/pdfGenerator';
 import UserGuide from './UserGuide';
@@ -94,6 +94,17 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             </button>
                         </>
                     )}
+
+                    {/* Sync Status Indicator */}
+                    {isGoogleLoggedIn && (
+                        <div className="flex items-center justify-center p-2 rounded-full bg-slate-100/50" title={`Sync Status: ${syncStatus}`}>
+                            {syncStatus === 'syncing' && <RefreshCw size={18} className="text-blue-500 animate-spin" />}
+                            {syncStatus === 'success' && <Check size={18} className="text-green-500" />}
+                            {syncStatus === 'error' && <AlertCircle size={18} className="text-red-500" />}
+                            {syncStatus === 'idle' && <Cloud size={18} className="text-gray-400" />}
+                        </div>
+                    )}
+
                     <button
                         onClick={() => setShowSettings(true)}
                         className="p-2 bg-white rounded-full shadow text-gray-600 hover:bg-gray-100 transition-colors"
