@@ -27,6 +27,7 @@ interface InvoiceContextType {
     lastSyncTime: Date | null;
     nextInvoiceNumber: number;
     setNextInvoiceNumber: (num: number) => void;
+    generateNextInvoiceNumber: () => number;
 }
 
 interface AppSettings {
@@ -142,10 +143,20 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     // Actions
+    // Helper: Generate next invoice number dynamically
+    const generateNextInvoiceNumber = () => {
+        if (invoices.length === 0) return 1;
+        const maxNum = invoices.reduce((max, inv) => {
+            const numPart = parseInt(inv.customer.invoiceNumber.replace(/\D/g, ''), 10);
+            return !isNaN(numPart) && numPart > max ? numPart : max;
+        }, 0);
+        return maxNum + 1;
+    };
+
     const updateNextInvoiceNumber = (num: number) => {
         setNextInvoiceNumber(num);
         localStorage.setItem('borewell_next_invoice_number', num.toString());
-        syncToCloud(invoices, num);
+        // syncToCloud(invoices, num); // No need to sync counter to cloud anymore, we rely on list
     };
 
     const loginToGoogle = async () => {
@@ -302,7 +313,8 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             syncStatus,
             lastSyncTime,
             nextInvoiceNumber,
-            setNextInvoiceNumber: updateNextInvoiceNumber
+            setNextInvoiceNumber: updateNextInvoiceNumber,
+            generateNextInvoiceNumber
         }}>
             {children}
         </InvoiceContext.Provider>

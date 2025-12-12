@@ -7,13 +7,14 @@ import { Plus, Trash2, Save, X, ArrowLeft, Eye } from 'lucide-react';
 import { calculateDrillingCost } from '../utils/calculator';
 
 const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }> = ({ onBack, initialData }) => {
-    const { saveInvoice, nextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
+    const { saveInvoice, generateNextInvoiceNumber, setNextInvoiceNumber } = useInvoices();
     const previewRef = useRef<HTMLDivElement>(null);
     const [showPreview, setShowPreview] = useState(false);
 
     // Form State
-    // Use nextInvoiceNumber specific to this render
-    const defaultInvoiceNumber = `INV-${String(nextInvoiceNumber).padStart(3, '0')}`;
+    // Calculate smart default number
+    const nextNum = generateNextInvoiceNumber();
+    const defaultInvoiceNumber = `INV-${String(nextNum).padStart(3, '0')}`;
 
     // Form State
     const [customer, setCustomer] = useState<CustomerDetails>(initialData?.customer || {
@@ -217,9 +218,8 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
             // Only increment if creating NEW invoice using the suggested number
             // Or if we just want to always increment when creating new
             if (!initialData) {
-                // Parse current 'next' number to see if we should increment from THAT or from what the user typed?
-                // Safest: Just increment the global counter so next one is unique.
-                setNextInvoiceNumber(nextInvoiceNumber + 1);
+                // Update global counter to be safe, though next render will re-calculate anyway
+                setNextInvoiceNumber(generateNextInvoiceNumber() + 1);
             }
             alert(`${docType} Saved!`);
             onBack();
