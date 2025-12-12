@@ -183,12 +183,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         let success = true;
         setInvoices(prev => {
-            // Double-check inside setter for safety (optional but good for consistency)
-            const safeDuplicate = prev.some(existing =>
-                existing.customer.invoiceNumber.toLowerCase() === invoice.customer.invoiceNumber.toLowerCase() &&
-                existing.id !== invoice.id
-            );
-            if (safeDuplicate) return prev; // Should not happen if synchronous check passed, unless race condition
+
 
             const existingIndex = prev.findIndex(i => i.id === invoice.id);
             let newInvoices;
