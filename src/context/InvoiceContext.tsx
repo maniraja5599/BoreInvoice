@@ -171,6 +171,7 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const saveInvoice = (invoice: InvoiceData) => {
         // Synchronous validation using current state
         const isDuplicate = invoices.some(existing =>
+            !existing.isDeleted && // Ignore deleted invoices
             existing.customer.invoiceNumber.toLowerCase() === invoice.customer.invoiceNumber.toLowerCase() &&
             existing.id !== invoice.id
         );
