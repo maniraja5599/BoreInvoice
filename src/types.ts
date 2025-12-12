@@ -30,6 +30,7 @@ export interface BorewellDetails {
     // For Repair Bore
     oldBoreDepth?: number;
     flushingRate?: number;
+    drillingBuffer?: number; // Grace limit in feet (e.g. 10)
 }
 
 export interface CustomerDetails {

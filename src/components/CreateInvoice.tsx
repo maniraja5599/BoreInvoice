@@ -41,6 +41,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
             flushingRate: parsedDefaults.flushingRate || 0,
             extraTime: initialData?.borewell?.extraTime || 0,
             discountAmount: initialData?.borewell?.discountAmount || 0,
+            drillingBuffer: parsedDefaults.drillingBuffer || 0, // Default 0 (Disabled)
         };
 
         const incoming = initialData?.borewell || {};
@@ -170,7 +171,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     };
 
     // Live Calculation for "Total" display
-    const { totalCost: drillingCost } = calculateDrillingCost(borewell.depth, borewell.oldBoreDepth, borewell.flushingRate, slabRates);
+    const { totalCost: drillingCost } = calculateDrillingCost(borewell.depth, borewell.oldBoreDepth, borewell.flushingRate, slabRates, borewell.drillingBuffer);
     const casing7Cost = safeCasing7 * safeRate7;
     const casing10Cost = safeCasing10 * safeRate10;
     const itemsTotal = items.reduce((sum, i) => sum + i.amount, 0);
@@ -190,6 +191,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
             bata: borewell.bata,
             transportCharges: borewell.transportCharges,
             flushingRate: borewell.flushingRate,
+            drillingBuffer: borewell.drillingBuffer,
         };
         localStorage.setItem('invoice_default_rates', JSON.stringify(ratesToSave));
 
@@ -337,6 +339,31 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
                         >
                             Manage Rates
                         </button>
+                    </div>
+                    {/* Buffer Config */}
+                    <div className="flex justify-end pt-1">
+                        <label className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={(borewell.drillingBuffer || 0) > 0}
+                                onChange={(e) => {
+                                    setBorewell({ ...borewell, drillingBuffer: e.target.checked ? 10 : 0 });
+                                }}
+                                className="rounded text-primary focus:ring-primary"
+                            />
+                            <span>Allow Slab Extension</span>
+                        </label>
+                        {(borewell.drillingBuffer || 0) > 0 && (
+                            <div className="flex items-center gap-1 ml-2">
+                                <label className="text-[10px] text-gray-500">Avg. 10ft:</label>
+                                <input
+                                    type="number"
+                                    className="w-12 p-1 text-xs border rounded text-center bg-gray-50"
+                                    value={borewell.drillingBuffer}
+                                    onChange={(e) => setBorewell({ ...borewell, drillingBuffer: Number(e.target.value) })}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -548,126 +575,128 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
             }
 
             {/* Manage Rates Modal */}
-            {showRateModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                            <h3 className="font-bold text-gray-800">Manage Drilling Rates</h3>
-                            <button onClick={() => setShowRateModal(false)} className="p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
-                        </div>
-
-                        {/* Profile Manager Bar */}
-                        {/* Profile Manager Bar */}
-                        <div className="px-4 pt-4 border-b pb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Rate Profiles</span>
-                                <button onClick={handleSaveProfile} className="text-xs text-primary hover:underline font-semibold">+ Save Current as Profile</button>
+            {
+                showRateModal && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+                            <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                                <h3 className="font-bold text-gray-800">Manage Drilling Rates</h3>
+                                <button onClick={() => setShowRateModal(false)} className="p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
                             </div>
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                {savedProfiles.length === 0 && <span className="text-xs text-gray-400 italic">No saved profiles</span>}
-                                {savedProfiles.map((p, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => handleLoadProfile(p.name)}
-                                        className={`flex-shrink-0 px-3 py-2 rounded-lg border text-sm font-medium cursor-pointer transition-all flex items-center gap-2 ${selectedProfileName === p.name
-                                            ? 'bg-green-50 border-green-500 text-green-700 shadow-sm ring-1 ring-green-500'
-                                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        <span>{p.name}</span>
-                                        {selectedProfileName === p.name && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteProfile(); }}
-                                                className="hover:bg-green-200 p-1 rounded-full text-green-700"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        <div className="p-4 overflow-y-auto flex-1 space-y-4">
-                            <div className="space-y-2">
-                                <div className="grid grid-cols-4 gap-2 text-xs font-bold text-gray-500 uppercase">
-                                    <div className="text-center">Min (ft)</div>
-                                    <div className="text-center">Max (ft)</div>
-                                    <div className="text-center">Rate (₹)</div>
-                                    <div className="text-center">Action</div>
+                            {/* Profile Manager Bar */}
+                            {/* Profile Manager Bar */}
+                            <div className="px-4 pt-4 border-b pb-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-bold text-gray-500 uppercase">Rate Profiles</span>
+                                    <button onClick={handleSaveProfile} className="text-xs text-primary hover:underline font-semibold">+ Save Current as Profile</button>
                                 </div>
-                                {slabRates.map((slab, index) => (
-                                    <div key={index} className="grid grid-cols-4 gap-2 items-center">
-                                        <input
-                                            type="number" className="p-2 border rounded text-center text-sm"
-                                            value={slab.minDepth || ''}
-                                            onChange={(e) => {
-                                                const newRates = [...slabRates];
-                                                newRates[index].minDepth = Number(e.target.value);
-                                                setSlabRates(newRates);
-                                            }}
-                                        />
-                                        <input
-                                            type="number" className="p-2 border rounded text-center text-sm"
-                                            value={slab.maxDepth || ''}
-                                            onChange={(e) => {
-                                                const newRates = [...slabRates];
-                                                newRates[index].maxDepth = Number(e.target.value);
-                                                setSlabRates(newRates);
-                                            }}
-                                        />
-                                        <input
-                                            type="number" className="p-2 border rounded text-center text-sm"
-                                            value={slab.rate || ''}
-                                            onChange={(e) => {
-                                                const newRates = [...slabRates];
-                                                newRates[index].rate = Number(e.target.value);
-                                                setSlabRates(newRates);
-                                            }}
-                                        />
-                                        <div className="flex justify-center">
-                                            <button
-                                                onClick={() => {
-                                                    const newRates = slabRates.filter((_, i) => i !== index);
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {savedProfiles.length === 0 && <span className="text-xs text-gray-400 italic">No saved profiles</span>}
+                                    {savedProfiles.map((p, i) => (
+                                        <div
+                                            key={i}
+                                            onClick={() => handleLoadProfile(p.name)}
+                                            className={`flex-shrink-0 px-3 py-2 rounded-lg border text-sm font-medium cursor-pointer transition-all flex items-center gap-2 ${selectedProfileName === p.name
+                                                ? 'bg-green-50 border-green-500 text-green-700 shadow-sm ring-1 ring-green-500'
+                                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            <span>{p.name}</span>
+                                            {selectedProfileName === p.name && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteProfile(); }}
+                                                    className="hover:bg-green-200 p-1 rounded-full text-green-700"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-4 gap-2 text-xs font-bold text-gray-500 uppercase">
+                                        <div className="text-center">Min (ft)</div>
+                                        <div className="text-center">Max (ft)</div>
+                                        <div className="text-center">Rate (₹)</div>
+                                        <div className="text-center">Action</div>
+                                    </div>
+                                    {slabRates.map((slab, index) => (
+                                        <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                                            <input
+                                                type="number" className="p-2 border rounded text-center text-sm"
+                                                value={slab.minDepth || ''}
+                                                onChange={(e) => {
+                                                    const newRates = [...slabRates];
+                                                    newRates[index].minDepth = Number(e.target.value);
                                                     setSlabRates(newRates);
                                                 }}
-                                                className="text-red-500 hover:bg-red-50 p-2 rounded-full"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            />
+                                            <input
+                                                type="number" className="p-2 border rounded text-center text-sm"
+                                                value={slab.maxDepth || ''}
+                                                onChange={(e) => {
+                                                    const newRates = [...slabRates];
+                                                    newRates[index].maxDepth = Number(e.target.value);
+                                                    setSlabRates(newRates);
+                                                }}
+                                            />
+                                            <input
+                                                type="number" className="p-2 border rounded text-center text-sm"
+                                                value={slab.rate || ''}
+                                                onChange={(e) => {
+                                                    const newRates = [...slabRates];
+                                                    newRates[index].rate = Number(e.target.value);
+                                                    setSlabRates(newRates);
+                                                }}
+                                            />
+                                            <div className="flex justify-center">
+                                                <button
+                                                    onClick={() => {
+                                                        const newRates = slabRates.filter((_, i) => i !== index);
+                                                        setSlabRates(newRates);
+                                                    }}
+                                                    className="text-red-500 hover:bg-red-50 p-2 rounded-full"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => setSlabRates([...slabRates, { minDepth: 0, maxDepth: 0, rate: 0 }])}
+                                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Plus size={16} /> Add New Slab
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setSlabRates([...slabRates, { minDepth: 0, maxDepth: 0, rate: 0 }])}
-                                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Plus size={16} /> Add New Slab
-                            </button>
-                        </div>
-                        <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-between">
-                            <button
-                                onClick={() => {
-                                    if (confirm('Reset to default rates?')) setSlabRates(TELESCOPIC_RATES);
-                                }}
-                                className="text-xs text-red-500 hover:underline"
-                            >
-                                Reset to Default
-                            </button>
-                            <button
-                                onClick={() => {
-                                    localStorage.setItem('invoice_slab_rates', JSON.stringify(slabRates));
-                                    setShowRateModal(false);
-                                }}
-                                className="bg-primary text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-sky-700"
-                            >
-                                Save Rates
-                            </button>
+                            <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-between">
+                                <button
+                                    onClick={() => {
+                                        if (confirm('Reset to default rates?')) setSlabRates(TELESCOPIC_RATES);
+                                    }}
+                                    className="text-xs text-red-500 hover:underline"
+                                >
+                                    Reset to Default
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        localStorage.setItem('invoice_slab_rates', JSON.stringify(slabRates));
+                                        setShowRateModal(false);
+                                    }}
+                                    className="bg-primary text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-sky-700"
+                                >
+                                    Save Rates
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div >
     );
 };

@@ -1,12 +1,11 @@
 import { type SlabRate, TELESCOPIC_RATES } from '../types';
 
-export const calculateDrillingCost = (totalDepth: number, oldBoreDepth = 0, flushingRate = 0, rates: SlabRate[] = TELESCOPIC_RATES) => {
+export const calculateDrillingCost = (totalDepth: number, oldBoreDepth = 0, flushingRate = 0, rates: SlabRate[] = TELESCOPIC_RATES, bufferLimit = 0) => {
     let totalCost = 0;
     let breakdown: { range: string; depth: number; rate: number; amount: number }[] = [];
 
-    // 1. Calculate Flushing / Re-bore Cost for the old depth
+    // 1. Calculate Flushing / Re-bore Cost
     if (oldBoreDepth > 0) {
-        // The effective re-bore depth is min(totalDepth, oldBoreDepth) in case user enters total < old
         const reBoreDepth = Math.min(totalDepth, oldBoreDepth);
         if (reBoreDepth > 0) {
             const amount = reBoreDepth * flushingRate;
@@ -20,18 +19,37 @@ export const calculateDrillingCost = (totalDepth: number, oldBoreDepth = 0, flus
         }
     }
 
-    // 2. Calculate New Drilling Cost (Starting from Old Depth)
+    // 2. Prepare Effective Rates (Handle Buffer Logic)
+    // We clone rates to avoid mutating the global constant if passed
+    let effectiveRates = rates.map(r => ({ ...r }));
+
+    // Check if we need to apply buffer
+    if (bufferLimit > 0) {
+        for (let i = 0; i < effectiveRates.length; i++) {
+            const slab = effectiveRates[i];
+            const nextSlab = effectiveRates[i + 1];
+
+            // Condition: Total Depth is just slightly above this slab's max, but within buffer
+            // And this is NOT the last slab (if it's the last slab, maxDepth might be Infinity or irrelevant)
+            if (totalDepth > slab.maxDepth && totalDepth <= slab.maxDepth + bufferLimit) {
+                // Extend this slab to cover the extra depth
+                slab.maxDepth = totalDepth;
+
+                // If there is a next slab, push its start forward to avoid overlap
+                if (nextSlab) {
+                    nextSlab.minDepth = totalDepth;
+                }
+
+                // We typically only apply this once for the specific boundary we are crossing
+                break;
+            }
+        }
+    }
+
+    // 3. Calculate Drilling Cost
     const drillingStartDepth = Math.max(0, oldBoreDepth);
 
-    // Iterate slabs to find new drilling footage
-    for (const slab of rates) {
-        // We only care if the Total Depth extends into this slab
-        // AND if this slab is beyond the Old Bore Depth
-
-        // The segment of this slab that we are drilling NEW:
-        // Start: Max(slab.min, drillingStartDepth)
-        // End: Min(slab.max, totalDepth)
-
+    for (const slab of effectiveRates) {
         const effectiveStart = Math.max(slab.minDepth, drillingStartDepth);
         const effectiveEnd = Math.min(slab.maxDepth, totalDepth);
 
