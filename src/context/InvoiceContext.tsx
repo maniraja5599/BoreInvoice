@@ -146,12 +146,13 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Actions
     // Helper: Generate next invoice number dynamically
     const generateNextInvoiceNumber = () => {
-        if (invoices.length === 0) return 1;
-        const maxNum = invoices.reduce((max, inv) => {
+        const maxFromList = invoices.reduce((max, inv) => {
             const numPart = parseInt(inv.customer.invoiceNumber.replace(/\D/g, ''), 10);
             return !isNaN(numPart) && numPart > max ? numPart : max;
         }, 0);
-        return maxNum + 1;
+
+        // Respect the manual setting if it's higher than the calculated next number
+        return Math.max(maxFromList + 1, nextInvoiceNumber);
     };
 
     const updateNextInvoiceNumber = (num: number) => {
