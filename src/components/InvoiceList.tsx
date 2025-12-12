@@ -95,15 +95,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                         </>
                     )}
 
-                    {/* Sync Status Indicator */}
-                    {isGoogleLoggedIn && (
-                        <div className="flex items-center justify-center p-2 rounded-full bg-slate-100/50" title={`Sync Status: ${syncStatus}`}>
-                            {syncStatus === 'syncing' && <RefreshCw size={18} className="text-blue-500 animate-spin" />}
-                            {syncStatus === 'success' && <Check size={18} className="text-green-500" />}
-                            {syncStatus === 'error' && <AlertCircle size={18} className="text-red-500" />}
-                            {syncStatus === 'idle' && <Cloud size={18} className="text-gray-400" />}
-                        </div>
-                    )}
+
 
                     <button
                         onClick={() => setShowSettings(true)}
@@ -201,6 +193,16 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                     >
                         +
                     </button>
+                </div>
+            )}
+
+            {/* Sync Status Floating Indicator (Bottom Left) */}
+            {isGoogleLoggedIn && (
+                <div className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3 rounded-full bg-white shadow-lg border border-gray-100 transition-all hover:scale-105" title={`Sync Status: ${syncStatus}`}>
+                    {syncStatus === 'syncing' && <RefreshCw size={20} className="text-blue-500 animate-spin" />}
+                    {syncStatus === 'success' && <Check size={20} className="text-green-500" />}
+                    {syncStatus === 'error' && <AlertCircle size={20} className="text-red-500" />}
+                    {syncStatus === 'idle' && <Cloud size={20} className="text-gray-400" />}
                 </div>
             )}
 
