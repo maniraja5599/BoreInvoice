@@ -159,8 +159,12 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const strictMatch = inv.customer.invoiceNumber.match(/INV-(\d+)/i);
             const strictNum = strictMatch ? parseInt(strictMatch[1], 10) : 0;
 
-            // Use strict match if found, otherwise fall back to loose match but cap it to avoid phone numbers
-            const candidate = strictNum > 0 ? strictNum : (numPart < 100000 ? numPart : 0);
+            // Use strict match if found, otherwise fall back to loose match
+            const rawNum = strictNum > 0 ? strictNum : numPart;
+
+            // Cap at 100,000 to prevent picking up phone numbers or huge typos (e.g. INV-884208)
+            // Unless the user MANUALLY set their config > 100,000, we assume list items > 100k are garbage.
+            const candidate = rawNum < 100000 ? rawNum : 0;
 
             return candidate > max ? candidate : max;
         }, 0);
