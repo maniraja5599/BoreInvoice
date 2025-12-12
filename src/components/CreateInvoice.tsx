@@ -14,7 +14,7 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
     // Form State
     // Calculate smart default number
     const nextNum = generateNextInvoiceNumber();
-    const defaultInvoiceNumber = `INV-${String(nextNum).padStart(3, '0')}`;
+    const defaultInvoiceNumber = `INV-${nextNum}`;
 
     // Form State
     const [customer, setCustomer] = useState<CustomerDetails>(initialData?.customer || {
@@ -72,10 +72,10 @@ const CreateInvoice: React.FC<{ onBack: () => void, initialData?: InvoiceData }>
 
     // Update invoice number when global invoice list loads (to prevent INV-001 race condition)
     React.useEffect(() => {
-        if (!initialData && customer.invoiceNumber === 'INV-001') {
+        if (!initialData && customer.invoiceNumber === 'INV-1') {
             const next = generateNextInvoiceNumber();
             if (next > 1) {
-                setCustomer(prev => ({ ...prev, invoiceNumber: `INV-${String(next).padStart(3, '0')}` }));
+                setCustomer(prev => ({ ...prev, invoiceNumber: `INV-${next}` }));
             }
         }
     }, [generateNextInvoiceNumber]);
