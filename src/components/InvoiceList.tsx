@@ -22,6 +22,45 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     // View Mode: 'active' or 'deleted'
     const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active');
 
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    const toggleSelection = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.size === 0) return;
+
+        if (viewMode === 'active') {
+            if (confirm(`Move ${selectedIds.size} invoices to Recycle Bin?`)) {
+                selectedIds.forEach(id => deleteInvoice(id));
+                setSelectedIds(new Set());
+            }
+        } else {
+            // Permanent Delete
+            const confirmText = prompt(`WARNING: This will PERMANENTLY DELETE ${selectedIds.size} invoices.\n\nType DELETE to confirm:`);
+            if (confirmText === "DELETE") {
+                selectedIds.forEach(id => permanentDeleteInvoice(id));
+                setSelectedIds(new Set());
+                alert("Invoices deleted forever.");
+            }
+        }
+    };
+
+    const handleBulkRestore = () => {
+        if (confirm(`Restore ${selectedIds.size} invoices?`)) {
+            selectedIds.forEach(id => restoreInvoice(id));
+            setSelectedIds(new Set());
+        }
+    };
+
     const filteredInvoices = invoices.filter(inv => {
         // 1. Filter by Deleted Status
         if (viewMode === 'active' && inv.isDeleted) return false;
@@ -58,7 +97,6 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
     return (
         <div className="bg-slate-50 min-h-screen p-4 pb-20">
             {/* Header */}
-            {/* Header */}
             <div className="flex justify-between items-start mb-6 sticky top-0 bg-slate-50/90 backdrop-blur-sm z-20 py-2">
                 <div className='flex items-center gap-3 text-left'>
                     {logo ? <img src={logo} className="w-14 h-14 rounded-2xl object-cover bg-white shadow-lg shadow-gray-200 ring-2 ring-white" /> : null}
@@ -70,15 +108,6 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                             {viewMode === 'deleted' ? '♻️ Recycle Bin' : 'ஆழமான நம்பிக்கை!'}
                         </p>
                     </div>
-                </div>
-
-                <div className="flex gap-2 items-center">
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="p-3 bg-white rounded-full shadow-md text-gray-600 hover:bg-gray-50 transition-all hover:scale-105 active:scale-95 border border-gray-100"
-                    >
-                        <Settings size={22} />
-                    </button>
                 </div>
             </div>
 
@@ -106,9 +135,32 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             ) : (
                 <div className="space-y-4">
                     {filteredInvoices.map(inv => (
-                        <div key={inv.id} className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border ${viewMode === 'deleted' ? 'bg-red-50/50 border-red-100' : 'bg-white border-white hover:border-blue-50'}`} onClick={() => viewMode === 'active' && setPreviewInvoice(inv)}>
+                        <div
+                            key={inv.id}
+                            className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border relative overflow-hidden ${selectedIds.has(inv.id) ? 'ring-2 ring-primary border-primary bg-blue-50/30' : (viewMode === 'deleted' ? 'bg-red-50/50 border-red-100' : 'bg-white border-white hover:border-blue-50')}`}
+                            onClick={() => {
+                                if (selectedIds.size > 0) {
+                                    toggleSelection(inv.id);
+                                } else if (viewMode === 'active') {
+                                    setPreviewInvoice(inv);
+                                }
+                            }}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                toggleSelection(inv.id);
+                            }}
+                        >
+                            {/* Selection Checkbox Overlay */}
+                            {selectedIds.size > 0 && (
+                                <div className="absolute top-4 right-4 z-10">
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedIds.has(inv.id) ? 'bg-primary border-primary' : 'bg-white border-gray-300'}`}>
+                                        {selectedIds.has(inv.id) && <Check size={14} className="text-white" />}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-start">
-                                <div className="flex-1">
+                                <div className="flex-1 pr-4">
                                     <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                                         {inv.customer.name}
                                         {isGoogleLoggedIn && <Cloud size={14} className="text-green-500" />}
@@ -118,54 +170,47 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                         <span className="text-xs text-gray-400 font-medium">{inv.customer.date}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 mt-2 line-clamp-1">{inv.customer.address || 'No address provided'}</p>
-
-                                    {/* Action Buttons Integrated Here */}
-                                    <div className="mt-3 flex gap-2">
-                                        {viewMode === 'active' ? (
-                                            <>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
-                                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-colors flex items-center gap-1.5 border border-blue-100"
-                                                >
-                                                    <Pencil size={12} /> Edit
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
-                                                    }}
-                                                    className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5 border border-red-100"
-                                                >
-                                                    <Trash2 size={12} /> Delete
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
-                                                    }}
-                                                    className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[10px] font-bold hover:bg-green-100 flex items-center gap-1.5 border border-green-100"
-                                                >
-                                                    <Check size={12} /> Restore
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (confirm("PERMANENTLY DELETE? This cannot be undone.")) permanentDeleteInvoice(inv.id);
-                                                    }}
-                                                    className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-200 flex items-center gap-1.5 border border-red-200"
-                                                >
-                                                    <X size={12} /> Delete Forever
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
                                 </div>
-                                <div className="text-right pl-2">
+                                <div className="flex flex-col items-end gap-1">
                                     <span className={`block font-black text-xl ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
-                                    <span className="text-[10px] text-gray-400 font-medium uppercase">{inv.type}</span>
+                                    <span className="text-[10px] text-gray-400 font-medium uppercase mb-2">{inv.type}</span>
+
+                                    {/* Action Buttons: Right Side Column */}
+                                    {selectedIds.size === 0 && (
+                                        <div className="flex flex-col gap-2 w-full items-end">
+                                            {viewMode === 'active' ? (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onEdit(inv); }}
+                                                        className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition-colors flex items-center gap-1.5 border border-blue-100"
+                                                    >
+                                                        <Pencil size={12} /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm("Move to Recycle Bin?")) deleteInvoice(inv.id);
+                                                        }}
+                                                        className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5 border border-red-100"
+                                                    >
+                                                        <Trash2 size={12} /> Delete
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm("Restore this invoice?")) restoreInvoice(inv.id);
+                                                        }}
+                                                        className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[10px] font-bold hover:bg-green-100 flex items-center gap-1.5 border border-green-100"
+                                                    >
+                                                        <Check size={12} /> Restore
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -173,8 +218,8 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                 </div>
             )}
 
-            {/* PROMOTED: Create Button (Only in Active Mode) */}
-            {viewMode === 'active' && (
+            {/* PROMOTED: Create Button (Only in Active Mode & No Selection) */}
+            {viewMode === 'active' && selectedIds.size === 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-10 pointer-events-none px-4">
                     <button
                         onClick={onCreate}
@@ -185,18 +230,57 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                 </div>
             )}
 
-            {/* Sync Status Floating Indicator (Bottom Left) */}
-            {isGoogleLoggedIn && (
-                <div className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3 rounded-full bg-white shadow-lg border border-gray-100 transition-all hover:scale-105" title={`Sync Status: ${syncStatus}`}>
+            {/* Sync / Settings Floating Button (Bottom Left) */}
+            {isGoogleLoggedIn && selectedIds.size === 0 && (
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3 rounded-full bg-white shadow-lg border border-gray-100 transition-all hover:scale-105 active:scale-95"
+                    title={`Sync Status: ${syncStatus} - Tap for Settings`}
+                >
                     {syncStatus === 'syncing' && <RefreshCw size={20} className="text-blue-500 animate-spin" />}
                     {syncStatus === 'success' && <Check size={20} className="text-green-500" />}
                     {syncStatus === 'error' && <AlertCircle size={20} className="text-red-500" />}
-                    {syncStatus === 'idle' && <Cloud size={20} className="text-gray-400" />}
+                    {syncStatus === 'idle' && <Settings size={20} className="text-gray-400" />}
+                </button>
+            )}
+
+            {/* BULK ACTION BAR */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)] z-30 flex items-center justify-between border-t border-gray-100 animate-in slide-in-from-bottom-10">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSelectedIds(new Set())} className="p-2 bg-gray-100 rounded-full"><X size={20} /></button>
+                        <span className="font-bold text-gray-800">{selectedIds.size} Selected</span>
+                    </div>
+                    <div className="flex gap-2">
+                        {viewMode === 'deleted' ? (
+                            <>
+                                <button
+                                    onClick={() => handleBulkRestore()}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-green-700"
+                                >
+                                    Restore All
+                                </button>
+                                <button
+                                    onClick={() => handleBulkDelete()}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-red-700"
+                                >
+                                    Delete Forever
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => handleBulkDelete()}
+                                className="px-5 py-2.5 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2"
+                            >
+                                <Trash2 size={18} /> Delete ({selectedIds.size})
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
-            {/* RECYCLE BIN CONTROLS (Floating Bottom) */}
-            {viewMode === 'deleted' && (
+            {/* RECYCLE BIN CONTROLS (Floating Bottom - Only when no selection) */}
+            {viewMode === 'deleted' && selectedIds.size === 0 && (
                 <div className="fixed bottom-6 w-full max-w-md px-4 z-20 flex gap-4 justify-center left-1/2 -translate-x-1/2">
                     <button
                         onClick={() => setViewMode('active')}
