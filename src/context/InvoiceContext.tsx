@@ -169,19 +169,25 @@ export const InvoiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const saveInvoice = (invoice: InvoiceData) => {
+        // Synchronous validation using current state
+        const isDuplicate = invoices.some(existing =>
+            existing.customer.invoiceNumber.toLowerCase() === invoice.customer.invoiceNumber.toLowerCase() &&
+            existing.id !== invoice.id
+        );
+
+        if (isDuplicate) {
+            alert(`Invoice Number "${invoice.customer.invoiceNumber}" already exists! Please use a unique number.`);
+            return false;
+        }
+
         let success = true;
         setInvoices(prev => {
-            // Check for duplicate invoice Number
-            const isDuplicate = prev.some(existing =>
+            // Double-check inside setter for safety (optional but good for consistency)
+            const safeDuplicate = prev.some(existing =>
                 existing.customer.invoiceNumber.toLowerCase() === invoice.customer.invoiceNumber.toLowerCase() &&
                 existing.id !== invoice.id
             );
-
-            if (isDuplicate) {
-                alert(`Invoice Number "${invoice.customer.invoiceNumber}" already exists!`);
-                success = false;
-                return prev;
-            }
+            if (safeDuplicate) return prev; // Should not happen if synchronous check passed, unless race condition
 
             const existingIndex = prev.findIndex(i => i.id === invoice.id);
             let newInvoices;
