@@ -241,7 +241,7 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             {isGoogleLoggedIn && selectedIds.size === 0 && (
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3 rounded-full bg-white shadow-lg border border-gray-100 transition-all hover:scale-105 active:scale-95"
+                    className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3.5 rounded-full bg-white shadow-xl border border-gray-100 ring-4 ring-gray-50 transition-all hover:scale-110 active:scale-95 hover:ring-gray-100"
                     title={`Sync Status: ${syncStatus} - Tap for Settings`}
                 >
                     {syncStatus === 'syncing' && <RefreshCw size={20} className="text-blue-500 animate-spin" />}
