@@ -173,7 +173,14 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
                                     <span className={`block font-black text-xl ${viewMode === 'deleted' ? 'text-gray-400' : 'text-primary'}`}>₹{inv.totalAmount.toLocaleString()}</span>
-                                    <span className="text-[10px] text-gray-400 font-medium uppercase mb-2">{inv.type}</span>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-[10px] text-gray-400 font-medium uppercase">{inv.type}</span>
+                                        {inv.borewell?.depth > 0 && (
+                                            <span className="text-[10px] text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap">
+                                                {inv.borewell.depth} ft
+                                            </span>
+                                        )}
+                                    </div>
 
                                     {/* Action Buttons: Right Side Column */}
                                     {selectedIds.size === 0 && (
