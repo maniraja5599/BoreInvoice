@@ -238,16 +238,17 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
             )}
 
             {/* Sync / Settings Floating Button (Bottom Left) */}
-            {isGoogleLoggedIn && selectedIds.size === 0 && (
+            {/* Sync / Settings Floating Button (Bottom Left) */}
+            {selectedIds.size === 0 && (
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="fixed bottom-6 left-4 z-10 flex items-center justify-center p-3.5 rounded-full bg-white shadow-xl border border-gray-100 ring-4 ring-blue-200 transition-all hover:scale-110 active:scale-95 hover:ring-blue-300"
+                    className="fixed bottom-6 left-4 z-40 flex items-center justify-center p-3.5 rounded-full bg-white shadow-xl border border-gray-100 ring-4 ring-blue-200 transition-all hover:scale-110 active:scale-95 hover:ring-blue-300"
                     title={`Sync Status: ${syncStatus} - Tap for Settings`}
                 >
-                    {syncStatus === 'syncing' && <RefreshCw size={20} className="text-blue-500 animate-spin" />}
-                    {syncStatus === 'success' && <Check size={20} className="text-green-500" />}
-                    {syncStatus === 'error' && <AlertCircle size={20} className="text-red-500" />}
-                    {syncStatus === 'idle' && <Settings size={20} className="text-gray-400" />}
+                    {isGoogleLoggedIn && syncStatus === 'syncing' ? <RefreshCw size={20} className="text-blue-500 animate-spin" /> :
+                        isGoogleLoggedIn && syncStatus === 'success' ? <Check size={20} className="text-green-500" /> :
+                            isGoogleLoggedIn && syncStatus === 'error' ? <AlertCircle size={20} className="text-red-500" /> :
+                                <Settings size={20} className="text-gray-400" />}
                 </button>
             )}
 
