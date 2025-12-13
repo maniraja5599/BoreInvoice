@@ -275,12 +275,35 @@ const InvoiceList: React.FC<{ onEdit: (invoice: InvoiceData) => void, onCreate: 
                                 </button>
                             </>
                         ) : (
-                            <button
-                                onClick={() => handleBulkDelete()}
-                                className="px-5 py-2.5 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2"
-                            >
-                                <Trash2 size={18} /> Delete ({selectedIds.size})
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        const selectedInvoices = invoices.filter(inv => selectedIds.has(inv.id));
+                                        const totalAmount = selectedInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+                                        const text = `*Invoice Summary*\n\n${selectedInvoices.map((inv, i) => `${i + 1}. ${inv.customer.name} (${inv.type}): ₹${inv.totalAmount.toLocaleString()}`).join('\n')}\n\n*Total Selected: ₹${totalAmount.toLocaleString()}*`;
+
+                                        if (navigator.share) {
+                                            navigator.share({
+                                                title: 'Invoice Summary',
+                                                text: text,
+                                            }).catch(console.error);
+                                        } else {
+                                            // Fallback for desktop/unsupported
+                                            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                            window.open(whatsappUrl, '_blank');
+                                        }
+                                    }}
+                                    className="px-5 py-2.5 bg-blue-500 text-white rounded-xl font-bold shadow-lg hover:bg-blue-600 active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <MessageCircle size={18} /> Share
+                                </button>
+                                <button
+                                    onClick={() => handleBulkDelete()}
+                                    className="px-5 py-2.5 bg-red-500 text-white rounded-xl font-bold shadow-lg hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                    <Trash2 size={18} /> Delete ({selectedIds.size})
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
